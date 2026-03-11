@@ -44,55 +44,6 @@
         /* Layout */
         .app-layout { display: flex; min-height: 100vh; }
         
-        /* Sidebar */
-        .sidebar {
-            width: 240px;
-            background: var(--bg-sidebar);
-            border-right: 1px solid var(--border-color);
-            padding: 32px 24px;
-            position: sticky;
-            top: 0;
-            height: 100vh;
-            flex-shrink: 0;
-            display: flex;
-            flex-direction: column;
-        }
-        .sidebar-logo {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 40px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            letter-spacing: -0.02em;
-        }
-        .sidebar-logo .icon {
-            width: 32px; height: 32px;
-            background: var(--text-primary);
-            color: #fff;
-            border-radius: 6px;
-            display: flex; align-items: center; justify-content: center;
-            font-weight: 700; font-size: 1rem;
-        }
-        .sidebar-nav { display: flex; flex-direction: column; gap: 8px; }
-        .nav-item {
-            display: flex; align-items: center; gap: 12px;
-            padding: 8px 12px;
-            border-radius: var(--radius-md);
-            color: var(--text-secondary);
-            text-decoration: none;
-            font-weight: 500;
-            font-size: 0.9rem;
-            transition: all 0.2s;
-            cursor: pointer;
-        }
-        .nav-item:hover, .nav-item.active {
-            background: var(--bg-hover);
-            color: var(--text-primary);
-        }
-        .nav-item.active { font-weight: 600; }
-        
         /* Main Content */
         .main-content {
             flex: 1;
@@ -253,15 +204,11 @@
 
         /* Responsive */
         @media(max-width: 1024px) {
-            .sidebar { width: 180px; padding: 24px 16px; }
             .kpi-grid { grid-template-columns: repeat(2, 1fr); }
             .main-content { padding: 32px; }
         }
         @media(max-width: 768px) {
             .app-layout { flex-direction: column; }
-            .sidebar { width: 100%; height: auto; position: static; padding: 16px 24px; border-right: none; border-bottom: 1px solid var(--border-color); }
-            .sidebar-logo { margin-bottom: 16px; }
-            .sidebar-nav { flex-direction: row; flex-wrap: wrap; }
             .main-content { padding: 24px; }
             .charts-grid { grid-template-columns: 1fr; }
             .top-bar { flex-direction: column; align-items: flex-start; gap: 16px; }
@@ -275,19 +222,6 @@
 <body>
 
 <div class="app-layout">
-    <aside class="sidebar">
-        <div class="sidebar-logo">
-            <div class="icon">R</div>
-            Rosecal
-        </div>
-        <nav class="sidebar-nav">
-            <a class="nav-item active">Dashboard</a>
-            <a class="nav-item">Ventas</a>
-            <a class="nav-item">Finanzas</a>
-            <a class="nav-item">Reportes</a>
-        </nav>
-    </aside>
-
     <main class="main-content">
         <div class="demo-banner" id="demoBanner">
             <span>⚠️</span>
@@ -296,7 +230,7 @@
 
         <header class="top-bar">
             <div>
-                <h1 class="page-title">Vista General</h1>
+                <h1 class="page-title">Rosecal — Vista General</h1>
                 <div class="page-subtitle">Monitoreo en tiempo real de ventas y finanzas.</div>
             </div>
             <div class="top-actions">
