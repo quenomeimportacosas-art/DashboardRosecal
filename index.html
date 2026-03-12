@@ -3,103 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rosecal — Dashboard de Ventas y Finanzas 2026</title>
+    <title>Rosecal — Dashboard de Administración 2026</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <style>
         :root {
-            --bg-body: #fafafa;
-            --bg-card: #ffffff;
-            --border: #e4e4e7;
-            --border-hover: #d4d4d8;
-            --text-main: #18181b;
-            --text-sec: #52525b;
-            --text-muted: #a1a1aa;
-            
-            --success: #10b981;
-            --success-bg: rgba(16, 185, 129, 0.1);
-            --danger: #ef4444;
-            --danger-bg: rgba(239, 68, 68, 0.1);
+            --bg-body: #fafafa; --bg-card: #ffffff;
+            --border: #e4e4e7;  --border-hover: #d4d4d8;
+            --text-main: #18181b; --text-sec: #52525b; --text-muted: #a1a1aa;
+            --success: #10b981; --success-bg: rgba(16, 185, 129, 0.1);
+            --danger: #ef4444; --danger-bg: rgba(239, 68, 68, 0.1);
             --warning: #f59e0b;
-            
-            --radius: 8px;
-            --shadow: 0 1px 2px rgba(0,0,0,0.04);
+            --radius: 8px; --shadow: 0 1px 2px rgba(0,0,0,0.04);
             --shadow-modal: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
         }
-        
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        
-        body {
-            font-family: 'Inter', -apple-system, sans-serif;
-            background: var(--bg-body);
-            color: var(--text-main);
-            line-height: 1.5;
-            -webkit-font-smoothing: antialiased;
-        }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg-body); color: var(--text-main); line-height: 1.5; -webkit-font-smoothing: antialiased; }
 
-        /* Loading */
-        .dashboard-loader {
-            position: fixed; top:0; left:0; width:100%; height:100%;
-            background: rgba(250,250,250,0.8); backdrop-filter: blur(4px);
-            z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center;
-            opacity: 0; visibility: hidden; transition: all 0.2s ease;
-        }
+        .dashboard-loader { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(250,250,250,0.8); backdrop-filter: blur(4px); z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.2s ease; }
         .dashboard-loader.active { opacity: 1; visibility: visible; }
-        .spinner {
-            width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--text-main);
-            border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 12px;
-        }
+        .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--text-main); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 12px; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Layout */
         .container { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
 
-        /* Status Bar */
-        .status-bar {
-            background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
-            padding: 16px 24px; margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center;
-        }
+        .status-bar { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 24px; margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center; }
         .status-left { display: flex; align-items: center; gap: 16px; }
         .brand { font-weight: 700; font-size: 1.1rem; letter-spacing: -0.02em; }
-        .status-pill {
-            display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 99px;
-            font-size: 0.8rem; font-weight: 600;
-        }
+        .status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 99px; font-size: 0.8rem; font-weight: 600; }
         .status-info { color: var(--text-sec); font-size: 0.85rem; display: flex; gap: 16px; }
         .status-info span { padding-left: 16px; border-left: 1px solid var(--border); }
         .status-info span:first-child { border: none; padding: 0; }
 
-        /* Top Actions */
-        .top-actions { display: flex; gap: 16px; align-items: center; margin-bottom: 32px; }
-        .date-picker {
-            display: flex; align-items: center; gap: 8px; background: var(--bg-card);
-            border: 1px solid var(--border); padding: 6px 12px; border-radius: var(--radius);
-        }
-        .date-picker input { border: none; outline: none; background: transparent; font-family: inherit; font-weight: 500; color: var(--text-main); }
+        .top-actions { display: flex; gap: 16px; align-items: center; margin-bottom: 32px; flex-wrap: wrap; }
+        .date-picker { display: flex; align-items: center; gap: 8px; background: var(--bg-card); border: 1px solid var(--border); padding: 6px 12px; border-radius: var(--radius); }
+        .date-picker input { border: none; outline: none; background: transparent; font-family: inherit; font-weight: 500; color: var(--text-main); cursor: pointer; }
         .date-picker label { font-size: 0.8rem; color: var(--text-sec); font-weight: 500; }
-        
-        .btn {
-            background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main);
-            padding: 8px 16px; border-radius: var(--radius); font-size: 0.85rem; font-weight: 500;
-            cursor: pointer; box-shadow: var(--shadow); transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px;
-        }
+        .btn { background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 8px 16px; border-radius: var(--radius); font-size: 0.85rem; font-weight: 500; cursor: pointer; box-shadow: var(--shadow); transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
         .btn:hover { background: var(--bg-body); border-color: var(--border-hover); }
         .btn-primary { background: var(--text-main); color: #fff; border-color: var(--text-main); }
         .btn-primary:hover { background: #27272a; border-color: #27272a; }
 
-        /* Grid Headers */
-        .section-header { font-size: 0.85rem; font-weight: 600; color: var(--text-sec); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.05em; }
-
-        /* Metrics Grid */
+        .section-header { font-size: 0.85rem; font-weight: 600; color: var(--text-sec); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.05em; display: flex; justify-content: space-between; align-items: center;}
         .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
-        .metric-card {
-            background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
-            padding: 20px; box-shadow: var(--shadow);
-        }
-        .metric-title { font-size: 0.8rem; color: var(--text-sec); margin-bottom: 8px; font-weight: 500; }
+        .metric-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
+        .metric-title { font-size: 0.8rem; color: var(--text-sec); margin-bottom: 8px; font-weight: 500; display:flex; justify-content:space-between; align-items:flex-start; }
         .metric-value { font-size: 1.5rem; font-weight: 600; color: var(--text-main); margin-bottom: 8px; letter-spacing: -0.02em; }
         .metric-delta { font-size: 0.8rem; font-weight: 500; display: flex; align-items: center; gap: 4px; }
+        
+        .cheque-banner { background: #fffbeb; border: 1px solid #fcd34d; border-radius: var(--radius); padding: 16px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;}
+
+        .charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 32px; }
         
         .delta-good { color: var(--success); }
         .delta-bad { color: var(--danger); }
@@ -107,33 +62,9 @@
         .delta-bg-good { background: var(--success-bg); color: var(--success); padding: 2px 6px; border-radius: 4px; }
         .delta-bg-bad { background: var(--danger-bg); color: var(--danger); padding: 2px 6px; border-radius: 4px; }
 
-        /* Charts Grid */
-        .charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 32px; }
-        
-        /* Table */
-        .table-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow-x: auto; margin-bottom: 32px; }
-        table { width: 100%; border-collapse: collapse; text-align: left; }
-        th { padding: 12px 20px; font-size: 0.75rem; font-weight: 600; color: var(--text-sec); text-transform: uppercase; border-bottom: 1px solid var(--border); background: var(--bg-body); }
-        td { padding: 14px 20px; font-size: 0.85rem; border-bottom: 1px solid var(--border); color: var(--text-main); }
-        tr:last-child td { border-bottom: none; }
-        tr:hover { background: var(--bg-body); }
-
-        .tag { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 500; border: 1px solid var(--border); background: var(--bg-body); }
-        .tag.success { background: var(--success-bg); color: var(--success); border: none; }
-        .tag.warning { background: rgba(245,158,11,0.1); color: #d97706; border: none; }
-
-        /* Modal */
-        .modal-overlay {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(2px);
-            z-index: 1000; display: flex; align-items: center; justify-content: center;
-            opacity: 0; visibility: hidden; transition: all 0.2s;
-        }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(2px); z-index: 1000; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.2s; }
         .modal-overlay.active { opacity: 1; visibility: visible; }
-        .modal {
-            background: #fff; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto;
-            border-radius: 12px; box-shadow: var(--shadow-modal); padding: 32px;
-            transform: translateY(20px); transition: all 0.2s; border: 1px solid var(--border);
-        }
+        .modal { background: #fff; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; border-radius: 12px; box-shadow: var(--shadow-modal); padding: 32px; transform: translateY(20px); transition: all 0.2s; border: 1px solid var(--border); }
         .modal-overlay.active .modal { transform: translateY(0); }
         
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
@@ -141,20 +72,13 @@
         .form-group input { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-family: inherit; }
         .form-group input:focus { outline: none; border-color: var(--text-main); }
 
-        @media(max-width: 1024px) {
-            .metrics-grid { grid-template-columns: repeat(2, 1fr); }
-            .charts-row { grid-template-columns: 1fr; }
-        }
-        @media(max-width: 768px) {
-            .status-bar { flex-direction: column; align-items: flex-start; gap: 12px; }
-            .top-actions { flex-direction: column; align-items: stretch; }
-            .form-grid { grid-template-columns: 1fr; }
-        }
+        @media(max-width: 1024px) { .metrics-grid { grid-template-columns: repeat(2, 1fr); } .charts-row { grid-template-columns: 1fr; } }
+        @media(max-width: 768px) { .status-bar { flex-direction: column; align-items: flex-start; gap: 12px; } .top-actions { flex-direction: column; align-items: stretch; } .form-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
 
-<div class="dashboard-loader" id="dashboardLoader"><div class="spinner"></div><div style="font-weight:500;">Sincronizando...</div></div>
+<div class="dashboard-loader" id="dashboardLoader"><div class="spinner"></div><div style="font-weight:500;">Obteniendo y cruzando métricas...</div></div>
 
 <div class="container">
     <div class="status-bar">
@@ -170,7 +94,7 @@
 
     <div class="top-actions">
         <div class="date-picker">
-            <label>PERÍODO</label>
+            <label>MES VIGENTE</label>
             <input type="month" id="globalMonth" onchange="renderDashboard()">
             <label style="margin-left:8px;">VS</label>
             <input type="month" id="compareMonth" onchange="renderDashboard()">
@@ -179,91 +103,64 @@
         <button class="btn" onclick="renderDashboard()">Recargar</button>
     </div>
 
-    <!-- Primera Fila -->
-    <div class="section-header">Salud Financiera</div>
+    <!-- Primera Fila: Salud -->
+    <div class="section-header">Salud Financiera <span style="font-size:0.7rem; font-weight:normal; background:var(--bg-body); padding:4px 8px; border-radius:4px; border:1px solid var(--border);" id="lblMtdInfo"></span></div>
     <div class="metrics-grid" id="rowHealth"></div>
 
-    <!-- Segunda Fila -->
+    <!-- Segunda Fila: Riesgo -->
+    <div class="section-header">Riesgo Financiero</div>
+    <div id="checkBannerContainer"></div>
+    <div class="metrics-grid" id="rowRisk"></div>
+
+    <!-- Tercera Fila: Crecimiento -->
     <div class="section-header">Motor de Crecimiento</div>
     <div class="metrics-grid" id="rowGrowth"></div>
 
-    <!-- Gráficos 1 -->
+    <!-- Gráficos -->
     <div class="charts-row">
         <div class="metric-card" style="padding:24px;">
-            <div class="metric-title" style="margin-bottom:24px;">Evolución del Negocio</div>
+            <div class="metric-title" style="margin-bottom:24px;">Evolución del Negocio (Diaria)</div>
             <div style="height:280px;"><canvas id="chartMain"></canvas></div>
         </div>
         <div class="metric-card" style="padding:24px;">
-            <div class="metric-title" style="margin-bottom:24px;">Pipeline de Pedidos</div>
-            <div style="height:280px;"><canvas id="chartFunnel"></canvas></div>
+            <div class="metric-title" style="margin-bottom:24px;">Mapa Caliente de Pedidos (Hora del Día)</div>
+            <div style="height:280px;"><canvas id="chartHours"></canvas></div>
         </div>
     </div>
 
-    <!-- Tercera Fila -->
-    <div class="section-header">Riesgo Financiero</div>
-    <div class="metrics-grid" id="rowRisk"></div>
-
-    <!-- Gráficos 2 -->
-    <div class="charts-row" style="grid-template-columns:1fr;">
-        <div class="metric-card" style="padding:24px;">
-            <div class="metric-title" style="margin-bottom:24px;">Reserva Histórica (Caja Final)</div>
-            <div style="height:200px;"><canvas id="chartCash"></canvas></div>
-        </div>
-    </div>
-
-    <!-- Tabla -->
-    <div class="section-header">Actividad Reciente</div>
-    <div class="table-card">
-        <table>
-            <thead><tr><th>Fecha</th><th>Cliente</th><th>Provincia</th><th>Importe</th><th>Condición</th><th>Estado</th></tr></thead>
-            <tbody id="txBody"></tbody>
-        </table>
-    </div>
 </div>
 
-<!-- Modal Form -->
-<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
-    <div class="modal">
-        <h2 style="font-size:1.2rem; margin-bottom:4px;">Carga Semanal</h2>
-        <p style="font-size:0.85rem; color:var(--text-sec); margin-bottom:24px;">Sincronización manual de caja, deudas y costos.</p>
-        
-        <div class="section-header">Tesorería & Costos</div>
-        <div class="form-grid">
-            <div class="form-group"><label>Banco Cta Cte</label><input type="number" id="fBanco"></div>
-            <div class="form-group"><label>Saldo MP</label><input type="number" id="fMP"></div>
-            <div class="form-group"><label>Efectivo Caja</label><input type="number" id="fCaja"></div>
-            <div class="form-group"><label>Inversiones</label><input type="number" id="fInv"></div>
-            <div class="form-group"><label>Gastos Operativos Mensuales</label><input type="number" id="fOps" placeholder="Sueldos, Alquiler..."></div>
-        </div>
-        
-        <div class="section-header">Deudas Activas</div>
-        <div class="form-grid">
-            <div class="form-group"><label>Proveedores</label><input type="number" id="fDeudaProv"></div>
-            <div class="form-group"><label>Servicios</label><input type="number" id="fDeudaServ"></div>
-            <div class="form-group"><label>Mercado Pago (Créditos)</label><input type="number" id="fDeudaMP"></div>
-        </div>
-
-        <div class="section-header">Comercial</div>
-        <div class="form-grid">
-            <div class="form-group"><label>Inversión Publicidad</label><input type="number" id="fAds"></div>
-            <div class="form-group"><label>Gasto Marketing (Agencia)</label><input type="number" id="fMkt"></div>
-            <div class="form-group"><label>Ventas Corporativas</label><input type="number" id="fCorp"></div>
-        </div>
-
-        <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:32px;">
-            <button class="btn" onclick="closeModal()">Cancelar</button>
-            <button class="btn btn-primary" id="btnSave" onclick="saveData()">Guardar Datos</button>
-        </div>
-    </div>
-</div>
-
-<!-- Modal Info Calculos -->
+<!-- Info Modal -->
 <div class="modal-overlay" id="infoOverlay" onclick="if(event.target===this)closeInfoModal()">
     <div class="modal" style="max-width:400px; padding:24px;">
         <h3 id="infoTitle" style="margin-bottom:8px; font-size:1.1rem; color:var(--text-main);"></h3>
         <p id="infoDesc" style="font-size:0.85rem; color:var(--text-sec); margin-bottom:16px;"></p>
         <div style="background:var(--bg-body); padding:16px; border-radius:8px; border:1px solid var(--border); font-family:monospace; font-size:0.85rem; line-height:1.7; color:var(--text-sec);" id="infoFormula"></div>
         <button class="btn" style="width:100%; margin-top:20px;" onclick="closeInfoModal()">Entendido</button>
+    </div>
+</div>
+
+<!-- Forms -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+        <h2 style="font-size:1.2rem; margin-bottom:4px;">Carga Semanal</h2>
+        <div class="form-grid" style="margin-top:24px;">
+            <div class="form-group"><label>Banco Cta Cte</label><input type="number" id="fBanco"></div>
+            <div class="form-group"><label>Saldo MP</label><input type="number" id="fMP"></div>
+            <div class="form-group"><label>Efectivo Caja</label><input type="number" id="fCaja"></div>
+            <div class="form-group"><label>Inversiones</label><input type="number" id="fInv"></div>
+            <div class="form-group"><label>Gastos Operativos (Fijos)</label><input type="number" id="fOps"></div>
+            <div class="form-group"><label>Proveedores</label><input type="number" id="fDeudaProv"></div>
+            <div class="form-group"><label>Servicios</label><input type="number" id="fDeudaServ"></div>
+            <div class="form-group"><label>Mercado Pago Créditos</label><input type="number" id="fDeudaMP"></div>
+            <div class="form-group"><label>Inversión Ads</label><input type="number" id="fAds"></div>
+            <div class="form-group"><label>Costo Agencia/Marketing</label><input type="number" id="fMkt"></div>
+            <div class="form-group"><label>Ventas Corporativas</label><input type="number" id="fCorp"></div>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:32px;">
+            <button class="btn" onclick="closeModal()">Cancelar</button>
+            <button class="btn btn-primary" id="btnSave" onclick="saveData()">Guardar Datos</button>
+        </div>
     </div>
 </div>
 
@@ -283,7 +180,7 @@ function calcDelta(cur,prev) { return prev ? ((cur-prev)/Math.abs(prev)*100) : 0
 
 async function fetchAPI(month) {
     let url = APPS_SCRIPT_URL + '?action=read' + (month ? '&month='+month : '');
-    try { const r = await fetch(url); return await r.json(); } catch(e) { console.error(e); return null; }
+    try { const r = await fetch(url); return await r.json(); } catch(e) { console.error(e); return { error:true }; }
 }
 
 async function renderDashboard() {
@@ -291,149 +188,181 @@ async function renderDashboard() {
     
     let m1 = document.getElementById('globalMonth').value;
     let m2 = document.getElementById('compareMonth').value;
+    if(!m1) {
+        let dDate = new Date();
+        m1 = dDate.getFullYear() + '-' + String(dDate.getMonth()+1).padStart(2,'0');
+        document.getElementById('globalMonth').value = m1;
+    }
     
     const [d1, d2] = await Promise.all([ fetchAPI(m1), m2 ? fetchAPI(m2) : Promise.resolve(null) ]);
     document.getElementById('dashboardLoader').classList.remove('active');
     
-    if(!d1 || d1.error) { alert('Error conectando a Sheets.'); return; }
+    // Fallback if Apps Script is still running old logic
+    if(!d1 || d1.error || !d1.orders) { alert('Aún no configuraste el script V5 en Google Sheets o está actualizándose en Vercel. Ve al paso "Configurar Hojas", y luego Publicá como "Nueva versión".'); return; }
     currentData = d1;
     
-    // Inject comparison data if loaded
-    renderUI(d1, d2);
+    coreLogic(d1, d2, m1);
 }
 
-function renderUI(d1, d2) {
-    const sl = d1.sales, mn = d1.manual || {}, cf = d1.cashFlow;
-    const psl = d2 ? d2.sales : { ventasTotal: sl.prevVentasTotal, ventasCobrado: sl.prevVentasCobrado, inversionPub: sl.prevInversionPub };
-    const pmn = (d2 ? d2.manual : mn.prev) || {};
+function coreLogic(d1, d2, m1) {
+    const today = new Date();
+    const isOngoingMonth = (today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') === m1);
+    // Para la comparativa, usamos MTD (Month-to-Date). Cortamos el mes de comparacion al mismo dia que el actual.
+    const dayLimit = isOngoingMonth ? today.getDate() : 31;
+    
+    document.getElementById('lblMtdInfo').innerText = isOngoingMonth ? `Comparativa a día ${dayLimit} (MTD)` : `Comparativa a mes completo`;
 
-    // 1. Cálculos de Salud Financiera
-    const cajaTotal = (mn.bancoCuenta||0) + (mn.saldoMP||0) + (mn.efectivoCaja||0) + (mn.inversiones||0);
-    const prevCaja = (pmn.bancoCuenta||0) + (pmn.saldoMP||0) + (pmn.efectivoCaja||0) + (pmn.inversiones||0);
+    function buildTxStats(ordersList, limit) {
+        let validOrders = 0, brutas = 0, pCobrados = 0, pNoCobrados = 0, anulados = 0;
+        let pCobradosVal = 0;
+        let hourly = new Array(24).fill(0);
+        let daily = {};
+        
+        const list = ordersList || [];
+        for(let o of list) {
+            let od = new Date(o.date);
+            let day = od.getDate();
+            if(day <= limit) {
+                if(o.status === 'ANULADO') {
+                    anulados++;
+                } else {
+                    validOrders++;
+                    brutas += o.amount;
+                    if(o.status === 'COBRADO') { pCobrados++; pCobradosVal += o.amount; }
+                    else pNoCobrados++;
+                    
+                    let dateKey = od.toISOString().split('T')[0];
+                    daily[dateKey] = (daily[dateKey]||0) + o.amount;
+                    hourly[od.getHours()]++;
+                }
+            }
+        }
+        return { validOrders, brutas, pCobrados, pNoCobrados, anulados, pCobradosVal, daily, hourly };
+    }
+
+    const m = d1.manual || {};
+    const sl = d1.sales || {};
+    const pm = (d2 ? d2.manual : (m.prev || {}));
     
-    const gastosMensuales = (mn.gastosOperativos||0) + (mn.inversionPublicidad||0) + (mn.gastoMarketing||0);
-    const runtime = gastosMensuales > 0 ? (cajaTotal / gastosMensuales) : 99;
+    const curStats = buildTxStats(d1.orders, dayLimit);
+    const prevStats = d2 ? buildTxStats(d2.orders, dayLimit) : { validOrders:0, brutas:0, pCobrados:0, pNoCobrados:0, anulados:0 };
+
+    /* 1. CALCULOS CAJA Y SALUD */
+    const cajaActual = (m.bancoCuenta||0) + (m.saldoMP||0) + (m.efectivoCaja||0) + (m.inversiones||0);
+    const prevCajaActual = (pm.bancoCuenta||0) + (pm.saldoMP||0) + (pm.efectivoCaja||0) + (pm.inversiones||0);
+    const cajaAcumulada = cajaActual + prevCajaActual; 
     
-    const costeBeato = sl.costoBeato||0;
-    const costeLogistica = sl.costoLogistica||0;
-    const gMarketing = mn.gastoMarketing||0;
-    const gOperativos = mn.gastosOperativos||0;
-    const chequesMes = sl.chequesMes||0; 
-    const invPub = sl.inversionPub || mn.inversionPublicidad || 0;
+    const impAds = m.inversionPublicidad||0, gMkt = m.gastoMarketing||0, ops = m.gastosOperativos||0;
+    const invVsVentas = curStats.brutas > 0 ? (impAds / curStats.brutas)*100 : 0;
     
-    const gananciaNeta = (sl.ventasCobrado||0) - invPub - gMarketing - gOperativos - costeBeato - costeLogistica - chequesMes;
-    let margenNeto = sl.ventasCobrado > 0 ? (gananciaNeta / sl.ventasCobrado)*100 : 0;
-    
-    // Status Bar
-    const vCrecimiento = calcDelta(sl.ventasCobrado, psl.ventasCobrado);
-    let stText = 'ESTABLE', stCol = 'var(--warning)', stBg = 'rgba(245,158,11,0.1)';
-    if(vCrecimiento > 5) { stText = 'CRECIENDO'; stCol = 'var(--success)'; stBg = 'var(--success-bg)'; }
-    if(vCrecimiento < -5) { stText = 'RIESGO'; stCol = 'var(--danger)'; stBg = 'var(--danger-bg)'; }
+    const gananciaNeta = (curStats.pCobradosVal) - (sl.costoBeato||0) - (sl.costoLogistica||0) - impAds - gMkt - ops;
+    const margenNeto = curStats.pCobradosVal > 0 ? (gananciaNeta / curStats.pCobradosVal)*100 : 0;
+
+    const burnRate = ops + impAds + gMkt;
+    const runway = burnRate > 0 ? (cajaActual / burnRate) : 99;
+
+    document.getElementById('labelRunway').innerHTML = `Meses de caja: <strong style="color:var(--text-main);">${fmt(runway,'dec')}</strong>`;
+    document.getElementById('labelUpdate').innerHTML = `Actualización: <strong style="color:var(--text-main);">En tiempo real</strong>`;
+
+    let stText = 'ESTABLE', stCol = 'var(--warning)';
+    const dVentas = calcDelta(curStats.brutas, prevStats.brutas);
+    if(dVentas > 5) { stText = 'CRECIENDO'; stCol = 'var(--success)'; }
+    if(dVentas < -5) { stText = 'ALERTA VENTAS'; stCol = 'var(--danger)'; }
     document.getElementById('globalStatusPill').innerHTML = `<span style="background:${stCol};width:8px;height:8px;border-radius:50%;"></span> <span style="color:${stCol};">${stText}</span>`;
-    document.getElementById('labelRunway').innerHTML = `Meses de caja: <strong style="color:var(--text-main);">${fmt(runtime,'dec')}</strong>`;
-    document.getElementById('labelUpdate').innerHTML = `Actualización: <strong style="color:var(--text-main);">Hoy</strong>`;
-    if(d1.computedMonth) document.getElementById('globalMonth').value = d1.computedMonth;
 
-    // Métricas Fila 1 (Salud)
     drawGrid('rowHealth', [
-        { label: 'Caja Total', val: cajaTotal, prev: prevCaja, t: 'cur',
-          info: { desc: 'Liquidez total e inmediata disponible en la empresa.', calc: `Banco: ${fmt(mn.bancoCuenta||0)}<br>MP: ${fmt(mn.saldoMP||0)}<br>Efectivo: ${fmt(mn.efectivoCaja||0)}<br>Inversiones: ${fmt(mn.inversiones||0)}<hr style="border:none;border-top:1px solid var(--border);margin:8px 0" /><strong style="color:var(--text-main)">Caja Total = ${fmt(cajaTotal)}</strong>` }
-        },
-        { label: 'Meses de Caja', val: runtime, prev: 0, t: 'dec', hideDelta: true,
-          info: { desc: 'Tiempo estimado de supervivencia pagando costo fijo mensual sin generar nuevos ingresos.', calc: `Caja Total: ${fmt(cajaTotal)}<br><br>Gastos Ops (Alquiler, etc): ${fmt(gOperativos)}<br>Inversión Ads: ${fmt(invPub)}<br>Gasto Agencia: ${fmt(gMarketing)}<br><strong style="color:var(--text-main)">Burn Rate Mensual: ${fmt(gastosMensuales)}</strong><hr style="border:none;border-top:1px solid var(--border);margin:8px 0" /><strong style="color:var(--text-main)">Caja / Gastos = ${fmt(runtime, 'dec')} meses</strong>` }
-        },
-        { label: 'Ventas del Mes', val: sl.ventasTotal, prev: psl.ventasTotal, t: 'cur',
-          info: { desc: 'Suma del valor bruto de todos los pedidos ingresados que no fueron anulados.', calc: `Facturación bruta procesada: ${fmt(sl.ventasTotal)}<br><br><span style="font-size:0.75rem;">• Base tomada del Formulario (se excluyen los que están en estado "ANULADO").</span>` }
-        },
-        { label: 'Margen Neto', val: margenNeto, prev: 0, t: 'pct', hideDelta: true,
-          info: { desc: 'Porcentaje de ganancia pura de bolsillo sobre lo que efectivamente se cobró.', calc: `Ventas Cobradas: ${fmt(sl.ventasCobrado)}<br><br>- Gastos Ops: ${fmt(gOperativos)}<br>- Ads: ${fmt(invPub)}<br>- Agencia: ${fmt(gMarketing)}<br>- Costo Beato: ${fmt(costeBeato)}<br>- Logística: ${fmt(costeLogistica)}<br>- Cheques (mes actual): ${fmt(chequesMes)}<hr style="border:none;border-top:1px solid var(--border);margin:8px 0" /><strong style="color:var(--text-main)">Ganancia Neta = ${fmt(gananciaNeta)}<br>Margen = ${fmt(margenNeto, 'pct')}</strong>` }
-        }
+        { label: 'Caja Actual', val: cajaActual, prev: 0, t: 'cur', hideDelta:true,
+          info: { desc:'Dinero en tiempo real ingresado en Datos Manuales.', calc:`Banco: ${fmt(m.bancoCuenta||0)}<br>MP: ${fmt(m.saldoMP||0)}<br>Efectivo: ${fmt(m.efectivoCaja||0)}<br>Inversiones: ${fmt(m.inversiones||0)}<hr/>Total: ${fmt(cajaActual)}`} },
+        { label: 'Caja Total (Acumulada)', val: cajaAcumulada, prev: 0, t: 'cur', hideDelta:true,
+          info: { desc:'Suma de la caja con el mes anterior.', calc:`Caja Actual: ${fmt(cajaActual)}<br>Caja Anterior: ${fmt(prevCajaActual)}<hr/>Acumulado = ${fmt(cajaAcumulada)}` } },
+        { label: 'Inversión sobre Facturado', val: invVsVentas, prev: 0, t: 'pct', hideDelta:true,
+          info: { desc:'Mide cuán eficiente es tu gasto en pauta. Recomendado <= 10%.', calc:`Inversión Ads: ${fmt(impAds)}<br>Total Facturado (Bruto): ${fmt(curStats.brutas)}<hr/>Proporción = ${fmt(invVsVentas,'dec')}%` } },
+        { label: 'Margen Operativo', val: margenNeto, prev: 0, t: 'pct', hideDelta:true,
+          info: { desc:'Porcentaje de rentabilidad pura versus Ventas con status COBRADO.', calc:`Ventas Cobradas: ${fmt(curStats.pCobradosVal)}<br>- Ads/Mkt: ${fmt(impAds+gMkt)}<br>- Ops Fijos: ${fmt(ops)}<br>- C. Beato: ${fmt(sl.costoBeato)}<br>- Logística: ${fmt(sl.costoLogistica)}<hr/>Ganancia Libre = ${fmt(gananciaNeta)}<br>Margen = ${fmt(margenNeto,'dec')}%` } }
     ]);
 
-    // Métricas Fila 2 (Crecimiento)
-    const txCount = d1.totalOrders || 0;
-    const pTxCount = d2 ? d2.totalOrders : 0;
-    const tktPromo = txCount > 0 ? sl.ventasTotal / txCount : 0;
-    const pTktPromo = pTxCount > 0 ? psl.ventasTotal / pTxCount : 0;
-    const roi = invPub > 0 ? (sl.ventasCobrado / invPub) : 0;
-    
-    drawGrid('rowGrowth', [
-        { label: 'Pedidos Nuevos', val: txCount, prev: pTxCount, t: 'num',
-          info: { desc: 'Cantidad total de operaciones comerciales en el mes.', calc: `Total de filas ingresadas en el periodo en el Formulario 1.<br><br><strong style="color:var(--text-main)">Total = ${fmt(txCount, 'num')} operaciones</strong>` }
-        },
-        { label: 'Ticket Promedio', val: tktPromo, prev: pTktPromo, t: 'cur',
-          info: { desc: 'Valor económico promedio que gasta un cliente por operación.', calc: `Ventas Totales Brutas: ${fmt(sl.ventasTotal)}<br>Cant. de Pedidos: ${fmt(txCount, 'num')}<hr style="border:none;border-top:1px solid var(--border);margin:8px 0" /><strong style="color:var(--text-main)">Ticket Promedio = ${fmt(tktPromo)}</strong>` }
-        },
-        { label: 'Ventas Cobradas', val: sl.ventasCobrado, prev: psl.ventasCobrado, t: 'cur',
-          info: { desc: 'Monto de dinero de ventas que efectivamente ya entró a caja.', calc: `Aquellas operaciones marcadas estrictamente con el estado "COBRADO" en el origen de los pedidos.<br><br><strong style="color:var(--text-main)">Total Cobrado = ${fmt(sl.ventasCobrado)}</strong>` }
-        },
-        { label: 'ROI Marketing', val: roi, prev: 0, t: 'dec', hideDelta: true,
-          info: { desc: 'Retorno sobre Inversión: cuántos pesos se cobraron por cada peso gastado en Ads.', calc: `Ventas Cobradas: ${fmt(sl.ventasCobrado)}<br>Inversión en Ads: ${fmt(invPub)}<hr style="border:none;border-top:1px solid var(--border);margin:8px 0" /><strong style="color:var(--text-main)">Ventas / Inv = ${fmt(roi, 'dec')}x</strong><br><br><span style="font-size:0.75rem;">(Por cada $1 en Ads, entraron $${fmt(roi, 'dec')} limpios)</span>` }
-        }
-    ]);
-
-    // Métricas Fila 3 (Riesgo)
-    const chequesEmitidosActivos = d1.cheques ? d1.cheques.totalActivos : 0;
-    const deudaProv = (mn.deudaProveedores||0) + (mn.deudaServicios||0) + (mn.deudaMP||0);
-    const totalPasivo = deudaProv + chequesEmitidosActivos; 
+    /* 2. RIESGO Y CHEQUES */
+    const deudasProv = (m.deudaProveedores||0) + (m.deudaServicios||0) + (m.deudaMP||0);
+    const chequesEmitidosActivos = d1.totalChequesActivos || 0;
+    const activos = cajaActual + (sl.deudaClientes||0);
+    const pasivos = deudasProv + chequesEmitidosActivos;
+    const posNeta = activos - pasivos;
 
     drawGrid('rowRisk', [
-        { label: 'Deuda de Clientes', val: sl.deudaClientes||0, prev: 0, t: 'cur', inv: true, hideDelta:true,
-          info: { desc: 'Dinero de ventas contabilizadas que los clientes aún no abonaron.', calc: `Facturación Acumulada no Cobrada.<br><br><strong style="color:var(--text-main)">Deuda Total Clientes = ${fmt(sl.deudaClientes||0)}</strong>` }
-        },
-        { label: 'Cheques (Activos)', val: chequesEmitidosActivos, prev: 0, t: 'cur', hideDelta:true,
-          info: { desc: 'Libranzas y promesas de pago emitidas de todos los meses que aún no vencieron ni cobraron.', calc: `Total de montos de cheques marcados como "ACTIVO" en el sistema.<br><br><strong style="color:var(--text-main)">Total Cheques Activos = ${fmt(chequesEmitidosActivos)}</strong>` }
-        },
-        { label: 'Cuentas a Pagar', val: deudaProv, prev: pmn ? ((pmn.deudaProveedores||0)+(pmn.deudaServicios||0)+(pmn.deudaMP||0)) : 0, t: 'cur', inv: true,
-          info: { desc: 'Pasivo total inmediato exigible para operación de CP.', calc: `Deuda Proveedores: ${fmt(mn.deudaProveedores||0)}<br>Deuda Servicios: ${fmt(mn.deudaServicios||0)}<br>Deuda MP: ${fmt(mn.deudaMP||0)}<hr style="border:none;border-top:1px solid var(--border);margin:8px 0" /><strong style="color:var(--text-main)">Cuentas a Pagar = ${fmt(deudaProv)}</strong>` }
-        },
-        { label: 'Posición Neta Caja', val: cajaTotal - totalPasivo, prev: 0, t: 'cur', hideDelta:true,
-          info: { desc: 'Estado real del patrimonio líquido luego de cancelar todo el pasivo (corto plazo y cheques futuros).', calc: `Caja Total: ${fmt(cajaTotal)}<br>- Cuentas a Pagar: ${fmt(deudaProv)}<br>- Comp. Cheques Futuros: ${fmt(chequesEmitidosActivos)}<hr style="border:none;border-top:1px solid var(--border);margin:8px 0" /><strong style="color:var(--text-main)">Posición Neta = ${fmt(cajaTotal - totalPasivo)}</strong>` }
-        }
+        { label: 'Deuda Pendiente de Cobro', val: sl.deudaClientes||0, prev: 0, t: 'cur', inv: true, hideDelta:true, 
+          info: { desc:'Dinero que tienen los clientes o cadetas, aún no ingresado.', calc:`Total Ventas marcadas pendientes o deuda activa.<br>Monto: ${fmt(sl.deudaClientes||0)}`} },
+        { label: 'Cheques Emitidos', val: chequesEmitidosActivos, prev: 0, t: 'cur', inv: true, hideDelta:true,
+          info: { desc:'Total de pasivos diferidos sin vencer.', calc:`Cheques con status ACTIVO: ${fmt(chequesEmitidosActivos)}`} },
+        { label: 'Posición Neta (Liquidez)', val: posNeta, prev: 0, t: 'cur', hideDelta:true,
+          info: { desc:'Tus Activos reales restando TODOS tus pasivos exigibles y futuros.', calc:`Activos (Caja + Deudas clientes): ${fmt(activos)}<br>Pasivos (Deuda Prov + Cheques): ${fmt(pasivos)}<hr/>Posición: ${fmt(posNeta)}`} }
     ]);
 
-    // Charts
+    // Próximos cheques
+    const cl = d1.chequesActivos || [];
+    let upcHtml = '';
+    if(cl.length > 0) {
+        cl.sort((a,b) => new Date(a.vencimiento) - new Date(b.vencimiento));
+        const px = cl[0];
+        const days = Math.round((new Date(px.vencimiento) - today)/(1000*60*60*24));
+        const deltaCheque = cajaActual - px.monto;
+        upcHtml = `<div class="cheque-banner">
+            <div><strong>Próximo cheque a liquidar en ${days >= 0 ? days : 0} días </strong> (${px.vencimiento}): A nombre de ${px.proveedor} </div>
+            <div style="font-size:1.1rem; font-weight:700;">Monto: ${fmt(px.monto)}</div>
+            <div style="color:${deltaCheque >= 0 ? 'var(--success)' : 'var(--danger)'}; font-weight:600;">ESTADO CAJA: ${deltaCheque >= 0 ? 'CUBIERTO (Sobran '+fmt(deltaCheque)+')' : 'FALTAN '+fmt(Math.abs(deltaCheque))}</div>
+        </div>`;
+    }
+    document.getElementById('checkBannerContainer').innerHTML = upcHtml;
+
+    /* 3. CRECIMIENTO Y VENTAS MTD */
+    const tktPromo = curStats.validOrders > 0 ? (curStats.brutas / curStats.validOrders) : 0;
+    const ptktPromo = prevStats.validOrders > 0 ? (prevStats.brutas / prevStats.validOrders) : 0;
+    
+    let ratioCobrado = 0, ratioStyle = '';
+    if(curStats.validOrders > 0) {
+        ratioCobrado = (curStats.pNoCobrados / curStats.validOrders) * 100;
+        ratioStyle = (curStats.pNoCobrados > curStats.pCobrados) ? '<span style="color:var(--danger)">Mayoría Pendiente ('+fmt(ratioCobrado,'dec')+'%)</span>' : '<span style="color:var(--success)">Sano Control Pendientes ('+fmt(ratioCobrado,'dec')+'%)</span>';
+    }
+
+    drawGrid('rowGrowth', [
+        { label: 'Ventas del Mes (Brutas)', val: curStats.brutas, prev: prevStats.brutas, t: 'cur',
+          info: { desc:'Facturación MTD ignorando anulados.', calc:`Hasta fecha ${dayLimit}:<br>Mes evaluado: ${fmt(curStats.brutas)}<br>Mes comparación: ${fmt(prevStats.brutas)}`} },
+        { label: 'Pedidos Nuevos (Unid.)', val: curStats.validOrders, prev: prevStats.validOrders, t: 'num',
+          info: { desc:'Unidades operadas válidas', calc:`Total MTD: ${fmt(curStats.validOrders,'num')} pedidos.`} },
+        { label: 'Ticket Promedio', val: tktPromo, prev: ptktPromo, t: 'cur',
+          info: { desc:'Facturación / Cantidad válida', calc:`Facturacion: ${fmt(curStats.brutas)} / Pedidos: ${fmt(curStats.validOrders,'num')}<hr/>Ticket = ${fmt(tktPromo)}`} },
+        { label: 'Volumen: Cobrado / No Cobrado', val: curStats.pCobrados, prev: 0, t: 'num', hideDelta:true,
+          info: { desc:'Relación de pedios terminados vs pendientes.', calc:`Cobrados: ${fmt(curStats.pCobrados,'num')}<br>En proceso o deuda: ${fmt(curStats.pNoCobrados,'num')}<hr/>${ratioStyle}`} },
+        { label: 'Pedidos Anulados', val: curStats.anulados, prev: prevStats.anulados, t: 'num', inv: true,
+          info: { desc:'Volumen de cancelaciones.', calc:`Mismos anulados a esta misma fecha limitados a MTD.`} }
+    ], 'repeat(5, 1fr)'); // overrides 4 columns to fit 5
+
+    /* 4. GRAFICOS */
     const ttip = { backgroundColor:'#18181b', titleColor:'#fff', padding:10, cornerRadius:4, bodyFont:{family:'Inter'} };
     Object.values(charts).forEach(c=>c.destroy());
     
-    const hist = d1.monthlyEvolution;
+    // Gráfico de Línea Diaria
+    const daysArr = Object.keys(curStats.daily).sort();
+    const amountsArr = daysArr.map(d => curStats.daily[d]);
+
     charts.main = new Chart(document.getElementById('chartMain'), {
         type: 'line', data: {
-            labels: hist.labels,
-            datasets: [
-                { label:'Ventas del Mes', data:hist.ventasTotal, borderColor:'#18181b', borderWidth:2, pointRadius:0, tension:0.2 },
-                { label:'Ventas Cobradas', data:hist.ventasCobrado, borderColor:'#10b981', backgroundColor: 'rgba(16,185,129,0.05)', fill:true, borderWidth:2, pointRadius:0, tension:0.2 },
-                { label:'Inv. Marketing', data:hist.inversionPub, borderColor:'#a1a1aa', borderDash:[5,5], borderWidth:2, pointRadius:0, tension:0 }
-            ]
-        }, options: { responsive:true, maintainAspectRatio:false, plugins:{ tooltip:ttip, legend:{position:'bottom', labels:{usePointStyle:true, boxWidth:8, font:{family:'Inter'}}} }, scales:{ x:{grid:{display:false}}, y:{grid:{color:'#f4f4f5'}, ticks:{callback:v=>'$'+(v/1000000).toFixed(1)+'M'}} } }
+            labels: daysArr.map(d => d.slice(5)), // MM-DD
+            datasets: [{ label:'Facturación Diaria MTD', data:amountsArr, borderColor:'#18181b', backgroundColor:'rgba(24,24,27,0.05)', fill:true, borderWidth:2, tension:0.2, pointRadius:4, pointHoverRadius:6 }]
+        }, options: { responsive:true, maintainAspectRatio:false, plugins:{ tooltip:ttip, legend:{display:false} }, scales:{ x:{grid:{display:false}}, y:{grid:{color:'#f4f4f5'}, ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'k'}} } }
     });
 
-    const statusObj = d1.ordersByStatus || {};
-    // Sort to make a funnel-like logic
-    const keys = Object.keys(statusObj).sort((a,b)=>statusObj[b]-statusObj[a]);
-    charts.funnel = new Chart(document.getElementById('chartFunnel'), {
+    // Heatmap / Hourly
+    const hourLabels = Array.from({length:24}, (_,i) => i+'hs');
+    charts.hours = new Chart(document.getElementById('chartHours'), {
         type: 'bar', data: {
-            labels: keys,
-            datasets: [{ data: keys.map(k=>statusObj[k]), backgroundColor: '#18181b', borderRadius: 4 }]
-        }, options: { indexAxis: 'y', responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:ttip }, scales:{ x:{grid:{color:'#f4f4f5'}}, y:{grid:{display:false}} } }
+            labels: hourLabels,
+            datasets: [{ label:'Pedidos en esta hora', data:curStats.hourly, backgroundColor: '#d4d4d8', hoverBackgroundColor:'#10b981', borderRadius: 4 }]
+        }, options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:ttip }, scales:{ x:{grid:{display:false}}, y:{grid:{color:'#f4f4f5'}} } }
     });
-
-    const cfLabels = d1.cashFlow ? d1.cashFlow.monthlyLabels : [];
-    const cfData = d1.cashFlow ? d1.cashFlow.monthlyCajaFinal : [];
-    charts.cash = new Chart(document.getElementById('chartCash'), {
-        type: 'bar', data: {
-            labels: cfLabels, datasets: [{ data: cfData, backgroundColor: '#d4d4d8', hoverBackgroundColor:'#18181b', borderRadius: 4 }]
-        }, options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:ttip }, scales:{ x:{grid:{display:false}}, y:{grid:{color:'#f4f4f5'}, ticks:{callback:v=>'$'+(v/1000000).toFixed(1)+'M'}} } }
-    });
-
-    // Table
-    document.getElementById('txBody').innerHTML = d1.transactions.slice(0, 15).map(t => {
-        let sc = 'tag'; if(t.status==='COBRADO')sc+=' success'; else if(t.status!=='ANULADO')sc+=' warning';
-        return `<tr><td><span style="color:var(--text-sec);">${t.date}</span></td><td style="font-weight:500;">${t.client}</td><td>${t.province}</td><td style="font-weight:500;">${fmt(t.amount)}</td><td>${t.condition}</td><td><span class="${sc}">${t.status}</span></td></tr>`;
-    }).join('');
 }
 
-function drawGrid(id, items) {
+function drawGrid(id, items, colsRule=null) {
+    if(colsRule) document.getElementById(id).style.gridTemplateColumns = colsRule;
     window.lastGridItems = window.lastGridItems || {};
     window.lastGridItems[id] = items;
     
@@ -444,50 +373,28 @@ function drawGrid(id, items) {
             const isGood = k.inv ? d < 0 : d > 0;
             dClass = isGood ? 'delta-bg-good' : 'delta-bg-bad';
             dHtml = `<span class="${dClass}">${d>0?'↑':'↓'} ${fmt(Math.abs(d),'pct')}</span>`;
-        } else if(!k.hideDelta) {
-            dHtml = `<span class="delta-neutral">-</span>`;
-        }
+        } else if(!k.hideDelta) { dHtml = `<span class="delta-neutral">-</span>`; }
         
-        let iconHtml = '';
-        if(k.info) {
-            iconHtml = `<svg onclick="openInfoMetric(${idx}, '${id}')" title="${k.info.desc}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor:pointer; color:var(--text-muted); opacity: 0.7;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
-        }
+        let iconHtml = k.info ? `<svg onclick="openInfoMetric(${idx}, '${id}')" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="cursor:pointer; color:var(--text-muted);"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>` : '';
         
         return `<div class="metric-card">
-            <div class="metric-title" style="display:flex; justify-content:space-between; align-items:flex-start;">
-                ${k.label} ${iconHtml}
-            </div>
-            <div class="metric-value">${fmt(k.val, k.t)}</div>
-            <div class="metric-delta">${dHtml}</div>
+            <div class="metric-title">${k.label} ${iconHtml}</div>
+            <div class="metric-value">${k.t==='num'&&k.label.includes('Cobrado /') ? k.val : fmt(k.val, k.t)}</div>
+            <div class="metric-delta">${dHtml} <div style="margin-left:auto; font-size:0.75rem;">${k.info && k.info.calc.includes('Mayoría Pendiente') ? '<span style="color:var(--danger)">CRÍTICO</span>' : ''}</div></div>
         </div>`;
     }).join('');
 }
 
-/* Modal */
-function openModal() {
-    if(currentData && currentData.manual) {
-        const m = currentData.manual;
-        const e = (id, val) => document.getElementById(id).value = val || '';
-        e('fBanco', m.bancoCuenta); e('fMP', m.saldoMP); e('fCaja', m.efectivoCaja); e('fInv', m.inversiones); e('fOps', m.gastosOperativos);
-        e('fDeudaProv', m.deudaProveedores); e('fDeudaServ', m.deudaServicios); e('fDeudaMP', m.deudaMP);
-        e('fAds', m.inversionPublicidad); e('fMkt', m.gastoMarketing); e('fCorp', m.ventasCorporativas);
-    }
-    document.getElementById('modalOverlay').classList.add('active');
-}
+function openModal() { document.getElementById('modalOverlay').classList.add('active'); }
 function closeModal() { document.getElementById('modalOverlay').classList.remove('active'); }
-
-/* Info Modal */
-function openInfoMetric(idx, gridId) {
-    const item = window.lastGridItems[gridId][idx];
-    if(!item || !item.info) return;
+function openInfoMetric(idx, gId) {
+    const item = window.lastGridItems[gId][idx];
     document.getElementById('infoTitle').innerText = item.label;
-    document.getElementById('infoDesc').innerText = item.info.desc;
+    document.getElementById('infoDesc').innerHTML = item.info.desc;
     document.getElementById('infoFormula').innerHTML = item.info.calc;
     document.getElementById('infoOverlay').classList.add('active');
 }
 function closeInfoModal() { document.getElementById('infoOverlay').classList.remove('active'); }
-
-/* Guardar Datos Manuales */
 async function saveData() {
     document.getElementById('btnSave').innerText = 'Guardando...';
     const v = (id) => Number(document.getElementById(id).value) || 0;
@@ -503,8 +410,6 @@ async function saveData() {
     } catch(e) { alert('Error al guardar.'); }
     document.getElementById('btnSave').innerText = 'Guardar Datos';
 }
-
-renderDashboard(); setInterval(renderDashboard, 60*60*1000);
 </script>
 </body>
 </html>
