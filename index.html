@@ -644,7 +644,7 @@ function getStatus(val, type, isInv = false) {
             if(val > -10) return {c:'warning', t:'Atención', i:'!'};
             return {c:'danger', t:'Crítico', i:'✗'};
         }
-    } else if(type === 'roi') {
+    } else if(type === 'roi') { return {c: val>=1 ? 'success' : 'danger', t:'', i:''};
         if(val >= 2.5) return {c:'success', t:'Excelente', i:'✓'};
         if(val >= 1.5) return {c:'warning', t:'Aceptable', i:'!'};
         return {c:'danger', t:'Bajo', i:'✗'};
