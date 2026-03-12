@@ -410,6 +410,9 @@ async function saveData() {
     } catch(e) { alert('Error al guardar.'); }
     document.getElementById('btnSave').innerText = 'Guardar Datos';
 }
+
+renderDashboard();
+setInterval(renderDashboard, 60*60*1000);
 </script>
 </body>
 </html>
