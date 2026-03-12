@@ -123,13 +123,15 @@ function doGet(e) {
     }
 
     // ── LEER TODO ──
-    var orders = readOrders(ss);
+    var targetDate = p.month ? new Date(p.month + '-01T12:00:00') : new Date();
+    
+    var orders = readOrders(ss, targetDate);
     var monthly = readMonthlySummary(ss);
-    var rawGanancias = readRawGanancias(ss);
+    var rawGanancias = readRawGanancias(ss, targetDate);
     var cashFlow = readCashFlow(ss);
     var cheques = readCheques(ss);
-    var manual = readManualData(ss);
-    var result = buildResponse(orders, monthly, rawGanancias, cashFlow, cheques, manual);
+    var manual = readManualData(ss, targetDate);
+    var result = buildResponse(orders, monthly, rawGanancias, cashFlow, cheques, manual, targetDate);
     return jsonOut(result);
 
   } catch (err) {
@@ -152,7 +154,7 @@ function toNum(v) {
 // ══════════════════════════════════════════════════════════════
 
 // ── LEER DATOS MANUALES ──
-function readManualData(ss) {
+function readManualData(ss, targetDate) {
   var empty = {
     fecha: '', bancoCuenta: 0, saldoMP: 0, efectivoCaja: 0,
     inversiones: 0, deudaProveedores: 0, deudaServicios: 0,
@@ -167,11 +169,16 @@ function readManualData(ss) {
   if (data.length < 2) return empty;
 
   var history = [];
+  var targetYMonth = targetDate.getFullYear() + '-' + padZero(targetDate.getMonth() + 1);
+
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
     if (!row[0]) continue;
+    var dStr = fmtDate(row[0]);
+    if (dStr.indexOf(targetYMonth) !== 0) continue; // Solo del mes elegido
+
     history.push({
-      fecha: fmtDate(row[0]),
+      fecha: dStr,
       bancoCuenta: toNum(row[1]),
       saldoMP: toNum(row[2]),
       efectivoCaja: toNum(row[3]),
@@ -212,7 +219,7 @@ function readManualData(ss) {
 }
 
 // ── LEER GANANCIAS RAW (Ventas Telefónicas + Deuda Clientes) ──
-function readRawGanancias(ss) {
+function readRawGanancias(ss, targetDate) {
   var sheet = ss.getSheetByName('Calculo Ganancias');
   if (!sheet) return { ventasTelefonicas: 0, deudaClientes: 0 };
   var data = sheet.getDataRange().getValues();
@@ -220,9 +227,8 @@ function readRawGanancias(ss) {
   var ventasTelefonicas = 0;
   var deudaClientes = 0;
 
-  var now = new Date();
-  var curMonth = now.getMonth();
-  var curYear = now.getFullYear();
+  var curMonth = targetDate.getMonth();
+  var curYear = targetDate.getFullYear();
 
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
@@ -244,7 +250,7 @@ function readRawGanancias(ss) {
 }
 
 // ── LEER PEDIDOS (Respuestas de formulario 1) ──
-function readOrders(ss) {
+function readOrders(ss, targetDate) {
   var sheet = ss.getSheetByName('Respuestas de formulario 1');
   if (!sheet) return [];
   var data = sheet.getDataRange().getValues();
@@ -264,14 +270,19 @@ function readOrders(ss) {
     status: findCol(h, 'status')
   };
 
+  var targetYMonth = targetDate.getFullYear() + '-' + padZero(targetDate.getMonth() + 1);
   var orders = [];
   for (var i = 1; i < data.length; i++) {
     var r = data[i];
     if (!r[ci.fecha >= 0 ? ci.fecha : 0]) continue;
+    
+    var fParsed = fmtDate(r[ci.fecha >= 0 ? ci.fecha : 0]);
+    if (fParsed.indexOf(targetYMonth) !== 0) continue; // Filtrar por mes
+
     var imp = parseAmount(r[ci.importe >= 0 ? ci.importe : 0]);
     if (imp <= 0) continue;
     orders.push({
-      date: fmtDate(r[ci.fecha >= 0 ? ci.fecha : 0]),
+      date: fParsed,
       client: String(r[ci.cliente >= 0 ? ci.cliente : 1] || ''),
       province: String(r[ci.provincia >= 0 ? ci.provincia : 5] || ''),
       amount: imp,
@@ -382,10 +393,13 @@ function readCheques(ss) {
 // ══════════════════════════════════════════════════════════════
 // CONSTRUIR RESPUESTA JSON
 // ══════════════════════════════════════════════════════════════
-function buildResponse(orders, monthly, rawGanancias, cashFlow, cheques, manual) {
+function buildResponse(orders, monthly, rawGanancias, cashFlow, cheques, manual, targetDate) {
+  var monthNames = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  var currentMonthName = monthNames[targetDate.getMonth()];
+  
   // --- Cash Flow KPIs ---
   var cfData = {
-    currentMonth: '', ingresosMercadoPago: 0, ingresosEfectivo: 0,
+    currentMonth: currentMonthName, ingresosMercadoPago: 0, ingresosEfectivo: 0,
     ingresosDeudaDuek: 0, cajaFinal: 0, prevIngresosMercadoPago: 0,
     prevIngresosEfectivo: 0, prevIngresosDeudaDuek: 0, prevCajaFinal: 0,
     monthlyLabels: [], monthlyCajaFinal: []
@@ -399,14 +413,9 @@ function buildResponse(orders, monthly, rawGanancias, cashFlow, cheques, manual)
     var ddKey = findConceptKey(c, 'deuda duek', 'duek');
     var cajaKey = findConceptKey(c, 'caja final');
 
-    var curIdx = -1;
-    if (cajaKey) {
-      for (var i = ms.length - 1; i >= 0; i--) {
-        if (c[cajaKey][ms[i]]) { curIdx = i; break; }
-      }
-    }
-    if (curIdx < 0) curIdx = ms.length - 1;
-    var curM = ms[curIdx];
+    var curIdx = ms.indexOf(currentMonthName);
+    if (curIdx < 0) curIdx = ms.length - 1; // Fallback
+    var curM = ms[curIdx] || '';
     var prevM = curIdx > 0 ? ms[curIdx - 1] : null;
 
     cfData.currentMonth = curM;
@@ -434,7 +443,7 @@ function buildResponse(orders, monthly, rawGanancias, cashFlow, cheques, manual)
 
   // --- Sales KPIs ---
   var slData = {
-    currentMonth: '', ventasTotal: 0, ventasCobrado: 0,
+    currentMonth: currentMonthName, ventasTotal: 0, ventasCobrado: 0,
     inversionPub: 0, prevVentasTotal: 0, prevVentasCobrado: 0, prevInversionPub: 0,
     ventasTelefonicas: rawGanancias.ventasTelefonicas,
     deudaClientes: rawGanancias.deudaClientes,
@@ -442,13 +451,20 @@ function buildResponse(orders, monthly, rawGanancias, cashFlow, cheques, manual)
   };
 
   if (monthly.length > 0) {
-    var last = monthly[monthly.length - 1];
-    slData.currentMonth = last.mes;
-    slData.ventasTotal = last.ventasTotal;
-    slData.ventasCobrado = last.ventasCobrado;
-    slData.inversionPub = last.inversionPub;
-    if (monthly.length > 1) {
-      var prev = monthly[monthly.length - 2];
+    // Buscar el mes objetivo en el array mensual
+    var mIdx = -1;
+    for (var mCount = 0; mCount < monthly.length; mCount++) {
+      if (monthly[mCount].mes === currentMonthName) { mIdx = mCount; break; }
+    }
+    if (mIdx < 0) mIdx = monthly.length - 1; // Fallback
+
+    var last = monthly[mIdx];
+    slData.currentMonth = last ? last.mes : currentMonthName;
+    slData.ventasTotal = last ? last.ventasTotal : 0;
+    slData.ventasCobrado = last ? last.ventasCobrado : 0;
+    slData.inversionPub = last ? last.inversionPub : 0;
+    if (mIdx > 0) {
+      var prev = monthly[mIdx - 1];
       slData.prevVentasTotal = prev.ventasTotal;
       slData.prevVentasCobrado = prev.ventasCobrado;
       slData.prevInversionPub = prev.inversionPub;
@@ -467,11 +483,8 @@ function buildResponse(orders, monthly, rawGanancias, cashFlow, cheques, manual)
   // --- Orders by Status + Deuda Duek + ML ---
   var statusCount = {};
   var statusAmount = {};
-  var provinceSet = {};
-  var conditionSet = {};
 
-  var now = new Date();
-  var curYearMonth = now.getFullYear() + '-' + padZero(now.getMonth() + 1);
+  var curYearMonth = targetDate.getFullYear() + '-' + padZero(targetDate.getMonth() + 1);
 
   for (var o = 0; o < orders.length; o++) {
     var ord = orders[o];
@@ -480,15 +493,13 @@ function buildResponse(orders, monthly, rawGanancias, cashFlow, cheques, manual)
 
     statusCount[s] = (statusCount[s] || 0) + 1;
     statusAmount[s] = (statusAmount[s] || 0) + ord.amount;
-    if (ord.province) provinceSet[ord.province] = 1;
-    if (ord.condition) conditionSet[ord.condition] = 1;
 
     // Deuda Duek
     if (sUp.indexOf('DUEK') >= 0) {
       slData.deudaDuek += ord.amount;
     }
 
-    // Mercado Libre (mes en curso)
+    // Mercado Libre
     if (ord.date && ord.date.indexOf(curYearMonth) === 0) {
       var ori = String(ord.origin || '').toUpperCase();
       if (ori.indexOf('MERCADO LIBRE') >= 0 || ori.indexOf('ML') >= 0) {
@@ -524,11 +535,12 @@ function buildResponse(orders, monthly, rawGanancias, cashFlow, cheques, manual)
     });
   }
 
-  // --- Transactions (last 30) ---
-  var txs = orders.slice(Math.max(0, orders.length - 30)).reverse();
+  // --- Transactions (last 50 for the selected month) ---
+  var txs = orders.slice(Math.max(0, orders.length - 50)).reverse();
 
   return {
     lastUpdate: new Date().toISOString(),
+    computedMonth: curYearMonth, // El mes que se computó (YYYY-MM)
     cashFlow: cfData,
     sales: slData,
     manual: manual,
@@ -542,9 +554,7 @@ function buildResponse(orders, monthly, rawGanancias, cashFlow, cheques, manual)
       cantidad: cantidadActivos
     },
     comparison: comparison,
-    transactions: txs,
-    provinces: Object.keys(provinceSet).sort(),
-    conditions: Object.keys(conditionSet).sort()
+    transactions: txs
   };
 }
 

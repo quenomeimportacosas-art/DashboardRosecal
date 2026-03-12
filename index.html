@@ -364,10 +364,14 @@
         <header class="top-bar">
             <div>
                 <h1 class="page-title">Rosecal — Vista General</h1>
-                <div class="page-subtitle">Monitoreo en tiempo real de ventas y finanzas.</div>
+                <div class="page-subtitle" id="globalPeriodLabel">Mostrando datos de: <strong>Seleccione un mes</strong></div>
+                <div class="update-text" id="lastUpdate">Actualizado: --</div>
             </div>
             <div class="top-actions">
-                <span class="update-text" id="lastUpdate">Actualizado: --</span>
+                <div class="filter-item" style="flex-direction:row; align-items:center;">
+                    <label style="margin-bottom:0; color:var(--text-primary);">Periodo:</label>
+                    <input type="month" id="globalMonth" onchange="changeMonth()" style="padding:8px; font-weight:600;">
+                </div>
                 <button class="btn-manual" id="btnManual" onclick="openModal()">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     Cargar Datos
@@ -379,24 +383,8 @@
             </div>
         </header>
 
-        <div class="filters">
-            <div class="filter-item">
-                <label>Estado</label>
-                <select id="filterStatus" onchange="applyFilters()">
-                    <option value="all">Todos</option>
-                    <option value="COBRADO">Cobrado</option>
-                    <option value="ANULADO">Anulado</option>
-                    <option value="DEUDA DUEK">Deuda Duek</option>
-                </select>
-            </div>
-            <div class="filter-item">
-                <label>Provincia</label>
-                <select id="filterProvince" onchange="applyFilters()"><option value="all">Todas</option></select>
-            </div>
-            <div class="filter-item">
-                <label>Condición</label>
-                <select id="filterCondition" onchange="applyFilters()"><option value="all">Todas</option></select>
-            </div>
+        <div class="filters" style="display:none;">
+            <!-- Filtros antiguos removidos a pedido del usuario -->
         </div>
 
         <h2 class="section-title">🏦 Tesorería</h2>
@@ -604,10 +592,13 @@ function generateDemoData(){
     };
 }
 
-async function fetchData(){
+async function fetchData(monthStr){
+    let url = CONFIG.APPS_SCRIPT_URL;
+    if (monthStr) url += '?action=read&month=' + monthStr;
+    
     if(!CONFIG.APPS_SCRIPT_URL){ document.getElementById('demoBanner').classList.remove('hidden'); return generateDemoData() }
     document.getElementById('demoBanner').classList.add('hidden');
-    try{ const r=await fetch(CONFIG.APPS_SCRIPT_URL); if(!r.ok)throw new Error(r.status); return await r.json() }
+    try{ const r=await fetch(url); if(!r.ok)throw new Error(r.status); return await r.json() }
     catch(e){ document.getElementById('demoBanner').classList.remove('hidden'); return generateDemoData() }
 }
 
@@ -760,23 +751,8 @@ function renderTable(txs){
     }).join('');
 }
 
-function populateFilters(data){
-    const prov=document.getElementById('filterProvince');
-    if(data.provinces){prov.innerHTML='<option value="all">Todas</option>'+data.provinces.map(p=>`<option value="${p}">${p}</option>`).join('')}
-    const cond=document.getElementById('filterCondition');
-    if(data.conditions){cond.innerHTML='<option value="all">Todas</option>'+data.conditions.map(c=>`<option value="${c}">${c}</option>`).join('')}
-}
-
 function applyFilters(){
-    if(!currentData)return;
-    let f=[...currentData.transactions];
-    const st=document.getElementById('filterStatus').value;
-    const pr=document.getElementById('filterProvince').value;
-    const co=document.getElementById('filterCondition').value;
-    if(st!=='all')f=f.filter(t=>t.status===st);
-    if(pr!=='all')f=f.filter(t=>t.province===pr);
-    if(co!=='all')f=f.filter(t=>t.condition===co);
-    renderTable(f);
+    // Viejo filtro removido
 }
 
 function sortTable(i){
@@ -787,17 +763,35 @@ function sortTable(i){
     renderTable(currentData.transactions);
 }
 
-async function renderDashboard(){
-    const data=await fetchData(); if(!data)return; currentData=data;
-    document.getElementById('lastUpdate').textContent='Última sinc. '+new Date().toLocaleTimeString(CONFIG.LOCALE,{hour:'2-digit',minute:'2-digit'});
-    renderKPIs(data); renderCharts(data); renderTable(data.transactions); populateFilters(data);
+async function changeMonth() {
+    await renderDashboard(document.getElementById('globalMonth').value);
+}
+
+async function renderDashboard(monthStr){
+    const data = await fetchData(monthStr); 
+    if(!data) return; 
+    currentData = data;
+    
+    // Set global month picker value to the one computed by backend if none was specifically asked
+    if(data.computedMonth) {
+        document.getElementById('globalMonth').value = data.computedMonth;
+        const [y, m] = data.computedMonth.split('-');
+        const mn = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][parseInt(m)-1];
+        document.getElementById('globalPeriodLabel').innerHTML = `Mostrando datos de: <strong>${mn} ${y}</strong>`;
+    }
+
+    document.getElementById('lastUpdate').textContent = 'Última sinc. ' + new Date().toLocaleTimeString(CONFIG.LOCALE,{hour:'2-digit',minute:'2-digit'});
+    renderKPIs(data); 
+    renderCharts(data); 
+    renderTable(data.transactions); 
 }
 
 async function refreshData(){
-    await renderDashboard();
+    const val = document.getElementById('globalMonth').value;
+    await renderDashboard(val);
 }
 
-renderDashboard(); setInterval(()=>renderDashboard(),CONFIG.REFRESH_INTERVAL);
+renderDashboard(); setInterval(()=>refreshData(), CONFIG.REFRESH_INTERVAL);
 </script>
 </body>
 </html>
