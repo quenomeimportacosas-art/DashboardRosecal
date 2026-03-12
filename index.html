@@ -257,6 +257,16 @@
     </div>
 </div>
 
+<!-- Modal Info Calculos -->
+<div class="modal-overlay" id="infoOverlay" onclick="if(event.target===this)closeInfoModal()">
+    <div class="modal" style="max-width:400px; padding:24px;">
+        <h3 id="infoTitle" style="margin-bottom:8px; font-size:1.1rem; color:var(--text-main);"></h3>
+        <p id="infoDesc" style="font-size:0.85rem; color:var(--text-sec); margin-bottom:16px;"></p>
+        <div style="background:var(--bg-body); padding:16px; border-radius:8px; border:1px solid var(--border); font-family:monospace; font-size:0.85rem; line-height:1.7; color:var(--text-sec);" id="infoFormula"></div>
+        <button class="btn" style="width:100%; margin-top:20px;" onclick="closeInfoModal()">Entendido</button>
+    </div>
+</div>
+
 <script>
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzBzq0RFa1kfNKmLx7IoeeWK3BFR8cA4hcYESpy56kNs6AGKuYIxJ1FGET40IrNUEs5/exec';
 const LOCALE = 'es-AR', CUR = 'ARS';
@@ -326,10 +336,18 @@ function renderUI(d1, d2) {
 
     // Métricas Fila 1 (Salud)
     drawGrid('rowHealth', [
-        { label: 'Caja Total', val: cajaTotal, prev: prevCaja, t: 'cur' },
-        { label: 'Meses de Caja', val: runtime, prev: 0, t: 'dec', hideDelta: true },
-        { label: 'Ventas del Mes', val: sl.ventasTotal, prev: psl.ventasTotal, t: 'cur' },
-        { label: 'Margen Neto', val: margenNeto, prev: 0, t: 'pct', hideDelta: true }
+        { label: 'Caja Total', val: cajaTotal, prev: prevCaja, t: 'cur',
+          info: { desc: 'Liquidez total e inmediata disponible en la empresa.', calc: `Banco: ${fmt(mn.bancoCuenta||0)}<br>MP: ${fmt(mn.saldoMP||0)}<br>Efectivo: ${fmt(mn.efectivoCaja||0)}<br>Inversiones: ${fmt(mn.inversiones||0)}<hr style="border:none;border-top:1px solid var(--border);margin:8px 0" /><strong style="color:var(--text-main)">Caja Total = ${fmt(cajaTotal)}</strong>` }
+        },
+        { label: 'Meses de Caja', val: runtime, prev: 0, t: 'dec', hideDelta: true,
+          info: { desc: 'Tiempo estimado de supervivencia pagando costo fijo mensual sin generar nuevos ingresos.', calc: `Caja Total: ${fmt(cajaTotal)}<br><br>Gastos Ops (Alquiler, etc): ${fmt(gOperativos)}<br>Inversión Ads: ${fmt(invPub)}<br>Gasto Agencia: ${fmt(gMarketing)}<br><strong style="color:var(--text-main)">Burn Rate Mensual: ${fmt(gastosMensuales)}</strong><hr style="border:none;border-top:1px solid var(--border);margin:8px 0" /><strong style="color:var(--text-main)">Caja / Gastos = ${fmt(runtime, 'dec')} meses</strong>` }
+        },
+        { label: 'Ventas del Mes', val: sl.ventasTotal, prev: psl.ventasTotal, t: 'cur',
+          info: { desc: 'Suma del valor bruto de todos los pedidos ingresados que no fueron anulados.', calc: `Facturación bruta procesada: ${fmt(sl.ventasTotal)}<br><br><span style="font-size:0.75rem;">• Base tomada del Formulario (se excluyen los que están en estado "ANULADO").</span>` }
+        },
+        { label: 'Margen Neto', val: margenNeto, prev: 0, t: 'pct', hideDelta: true,
+          info: { desc: 'Porcentaje de ganancia pura de bolsillo sobre lo que efectivamente se cobró.', calc: `Ventas Cobradas: ${fmt(sl.ventasCobrado)}<br><br>- Gastos Ops: ${fmt(gOperativos)}<br>- Ads: ${fmt(invPub)}<br>- Agencia: ${fmt(gMarketing)}<br>- Costo Beato: ${fmt(costeBeato)}<br>- Logística: ${fmt(costeLogistica)}<br>- Cheques (mes actual): ${fmt(chequesMes)}<hr style="border:none;border-top:1px solid var(--border);margin:8px 0" /><strong style="color:var(--text-main)">Ganancia Neta = ${fmt(gananciaNeta)}<br>Margen = ${fmt(margenNeto, 'pct')}</strong>` }
+        }
     ]);
 
     // Métricas Fila 2 (Crecimiento)
@@ -340,22 +358,38 @@ function renderUI(d1, d2) {
     const roi = invPub > 0 ? (sl.ventasCobrado / invPub) : 0;
     
     drawGrid('rowGrowth', [
-        { label: 'Pedidos Nuevos', val: txCount, prev: pTxCount, t: 'num' },
-        { label: 'Ticket Promedio', val: tktPromo, prev: pTktPromo, t: 'cur' },
-        { label: 'Ventas Cobradas', val: sl.ventasCobrado, prev: psl.ventasCobrado, t: 'cur' },
-        { label: 'ROI Marketing', val: roi, prev: 0, t: 'dec', hideDelta: true }
+        { label: 'Pedidos Nuevos', val: txCount, prev: pTxCount, t: 'num',
+          info: { desc: 'Cantidad total de operaciones comerciales en el mes.', calc: `Total de filas ingresadas en el periodo en el Formulario 1.<br><br><strong style="color:var(--text-main)">Total = ${fmt(txCount, 'num')} operaciones</strong>` }
+        },
+        { label: 'Ticket Promedio', val: tktPromo, prev: pTktPromo, t: 'cur',
+          info: { desc: 'Valor económico promedio que gasta un cliente por operación.', calc: `Ventas Totales Brutas: ${fmt(sl.ventasTotal)}<br>Cant. de Pedidos: ${fmt(txCount, 'num')}<hr style="border:none;border-top:1px solid var(--border);margin:8px 0" /><strong style="color:var(--text-main)">Ticket Promedio = ${fmt(tktPromo)}</strong>` }
+        },
+        { label: 'Ventas Cobradas', val: sl.ventasCobrado, prev: psl.ventasCobrado, t: 'cur',
+          info: { desc: 'Monto de dinero de ventas que efectivamente ya entró a caja.', calc: `Aquellas operaciones marcadas estrictamente con el estado "COBRADO" en el origen de los pedidos.<br><br><strong style="color:var(--text-main)">Total Cobrado = ${fmt(sl.ventasCobrado)}</strong>` }
+        },
+        { label: 'ROI Marketing', val: roi, prev: 0, t: 'dec', hideDelta: true,
+          info: { desc: 'Retorno sobre Inversión: cuántos pesos se cobraron por cada peso gastado en Ads.', calc: `Ventas Cobradas: ${fmt(sl.ventasCobrado)}<br>Inversión en Ads: ${fmt(invPub)}<hr style="border:none;border-top:1px solid var(--border);margin:8px 0" /><strong style="color:var(--text-main)">Ventas / Inv = ${fmt(roi, 'dec')}x</strong><br><br><span style="font-size:0.75rem;">(Por cada $1 en Ads, entraron $${fmt(roi, 'dec')} limpios)</span>` }
+        }
     ]);
 
     // Métricas Fila 3 (Riesgo)
     const chequesEmitidosActivos = d1.cheques ? d1.cheques.totalActivos : 0;
     const deudaProv = (mn.deudaProveedores||0) + (mn.deudaServicios||0) + (mn.deudaMP||0);
-    const totalPasivo = deudaProv + chequesEmitidosActivos; // Cheques a cobrar? o pagar? El user dijo "Pagos futuros que entraran" (Wait, then it's Asset). But wait, previous prompt: "Cheques a pagar ese mes - costo beato". That implies cheques emitidos. Asumimos chequesEmitidosActivos es Pasivo o "Cuentas a Pagar".
+    const totalPasivo = deudaProv + chequesEmitidosActivos; 
 
     drawGrid('rowRisk', [
-        { label: 'Deuda de Clientes', val: sl.deudaClientes||0, prev: 0, t: 'cur', inv: true, hideDelta:true },
-        { label: 'Cheques (Activos)', val: chequesEmitidosActivos, prev: 0, t: 'cur', hideDelta:true },
-        { label: 'Cuentas a Pagar', val: deudaProv, prev: pmn ? ((pmn.deudaProveedores||0)+(pmn.deudaServicios||0)+(pmn.deudaMP||0)) : 0, t: 'cur', inv: true },
-        { label: 'Posición Neta Caja', val: cajaTotal - totalPasivo, prev: 0, t: 'cur', hideDelta:true }
+        { label: 'Deuda de Clientes', val: sl.deudaClientes||0, prev: 0, t: 'cur', inv: true, hideDelta:true,
+          info: { desc: 'Dinero de ventas contabilizadas que los clientes aún no abonaron.', calc: `Facturación Acumulada no Cobrada.<br><br><strong style="color:var(--text-main)">Deuda Total Clientes = ${fmt(sl.deudaClientes||0)}</strong>` }
+        },
+        { label: 'Cheques (Activos)', val: chequesEmitidosActivos, prev: 0, t: 'cur', hideDelta:true,
+          info: { desc: 'Libranzas y promesas de pago emitidas de todos los meses que aún no vencieron ni cobraron.', calc: `Total de montos de cheques marcados como "ACTIVO" en el sistema.<br><br><strong style="color:var(--text-main)">Total Cheques Activos = ${fmt(chequesEmitidosActivos)}</strong>` }
+        },
+        { label: 'Cuentas a Pagar', val: deudaProv, prev: pmn ? ((pmn.deudaProveedores||0)+(pmn.deudaServicios||0)+(pmn.deudaMP||0)) : 0, t: 'cur', inv: true,
+          info: { desc: 'Pasivo total inmediato exigible para operación de CP.', calc: `Deuda Proveedores: ${fmt(mn.deudaProveedores||0)}<br>Deuda Servicios: ${fmt(mn.deudaServicios||0)}<br>Deuda MP: ${fmt(mn.deudaMP||0)}<hr style="border:none;border-top:1px solid var(--border);margin:8px 0" /><strong style="color:var(--text-main)">Cuentas a Pagar = ${fmt(deudaProv)}</strong>` }
+        },
+        { label: 'Posición Neta Caja', val: cajaTotal - totalPasivo, prev: 0, t: 'cur', hideDelta:true,
+          info: { desc: 'Estado real del patrimonio líquido luego de cancelar todo el pasivo (corto plazo y cheques futuros).', calc: `Caja Total: ${fmt(cajaTotal)}<br>- Cuentas a Pagar: ${fmt(deudaProv)}<br>- Comp. Cheques Futuros: ${fmt(chequesEmitidosActivos)}<hr style="border:none;border-top:1px solid var(--border);margin:8px 0" /><strong style="color:var(--text-main)">Posición Neta = ${fmt(cajaTotal - totalPasivo)}</strong>` }
+        }
     ]);
 
     // Charts
@@ -400,7 +434,10 @@ function renderUI(d1, d2) {
 }
 
 function drawGrid(id, items) {
-    document.getElementById(id).innerHTML = items.map(k => {
+    window.lastGridItems = window.lastGridItems || {};
+    window.lastGridItems[id] = items;
+    
+    document.getElementById(id).innerHTML = items.map((k, idx) => {
         const d = (k.hideDelta || !k.prev) ? 0 : calcDelta(k.val, k.prev);
         let dHtml = '', dClass = 'delta-neutral';
         if(d !== 0) {
@@ -410,7 +447,19 @@ function drawGrid(id, items) {
         } else if(!k.hideDelta) {
             dHtml = `<span class="delta-neutral">-</span>`;
         }
-        return `<div class="metric-card"><div class="metric-title">${k.label}</div><div class="metric-value">${fmt(k.val, k.t)}</div><div class="metric-delta">${dHtml}</div></div>`;
+        
+        let iconHtml = '';
+        if(k.info) {
+            iconHtml = `<svg onclick="openInfoMetric(${idx}, '${id}')" title="${k.info.desc}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor:pointer; color:var(--text-muted); opacity: 0.7;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
+        }
+        
+        return `<div class="metric-card">
+            <div class="metric-title" style="display:flex; justify-content:space-between; align-items:flex-start;">
+                ${k.label} ${iconHtml}
+            </div>
+            <div class="metric-value">${fmt(k.val, k.t)}</div>
+            <div class="metric-delta">${dHtml}</div>
+        </div>`;
     }).join('');
 }
 
@@ -426,6 +475,19 @@ function openModal() {
     document.getElementById('modalOverlay').classList.add('active');
 }
 function closeModal() { document.getElementById('modalOverlay').classList.remove('active'); }
+
+/* Info Modal */
+function openInfoMetric(idx, gridId) {
+    const item = window.lastGridItems[gridId][idx];
+    if(!item || !item.info) return;
+    document.getElementById('infoTitle').innerText = item.label;
+    document.getElementById('infoDesc').innerText = item.info.desc;
+    document.getElementById('infoFormula').innerHTML = item.info.calc;
+    document.getElementById('infoOverlay').classList.add('active');
+}
+function closeInfoModal() { document.getElementById('infoOverlay').classList.remove('active'); }
+
+/* Guardar Datos Manuales */
 async function saveData() {
     document.getElementById('btnSave').innerText = 'Guardando...';
     const v = (id) => Number(document.getElementById(id).value) || 0;
