@@ -176,6 +176,12 @@ function fmt(v, type='cur') {
     if(type==='dec') return v.toFixed(1);
     return v;
 }
+function formatDDMMAA(isoString) {
+    if(!isoString) return '';
+    let p = isoString.split('T')[0].split('-');
+    if(p.length===3) return p[2]+'/'+p[1]+'/'+p[0].slice(2);
+    return isoString;
+}
 function calcDelta(cur,prev) { return prev ? ((cur-prev)/Math.abs(prev)*100) : 0; }
 
 async function fetchAPI(month) {
@@ -271,10 +277,10 @@ function coreLogic(d1, d2, m1) {
     document.getElementById('globalStatusPill').innerHTML = `<span style="background:${stCol};width:8px;height:8px;border-radius:50%;"></span> <span style="color:${stCol};">${stText}</span>`;
 
     drawGrid('rowHealth', [
-        { label: 'Caja Actual', val: cajaActual, prev: 0, t: 'cur', hideDelta:true,
-          info: { desc:'Dinero en tiempo real ingresado en Datos Manuales.', calc:`Banco: ${fmt(m.bancoCuenta||0)}<br>MP: ${fmt(m.saldoMP||0)}<br>Efectivo: ${fmt(m.efectivoCaja||0)}<br>Inversiones: ${fmt(m.inversiones||0)}<hr/>Total: ${fmt(cajaActual)}`} },
         { label: 'Caja Total (Acumulada)', val: cajaAcumulada, prev: 0, t: 'cur', hideDelta:true,
           info: { desc:'Suma de la caja con el mes anterior.', calc:`Caja Actual: ${fmt(cajaActual)}<br>Caja Anterior: ${fmt(prevCajaActual)}<hr/>Acumulado = ${fmt(cajaAcumulada)}` } },
+        { label: 'Caja Actual', val: cajaActual, prev: 0, t: 'cur', hideDelta:true,
+          info: { desc:'Dinero en tiempo real ingresado en Datos Manuales.', calc:`Banco: ${fmt(m.bancoCuenta||0)}<br>MP: ${fmt(m.saldoMP||0)}<br>Efectivo: ${fmt(m.efectivoCaja||0)}<br>Inversiones: ${fmt(m.inversiones||0)}<hr/>Total: ${fmt(cajaActual)}`} },
         { label: 'Inversión sobre Facturado', val: invVsVentas, prev: 0, t: 'pct', hideDelta:true,
           info: { desc:'Mide cuán eficiente es tu gasto en pauta. Recomendado <= 10%.', calc:`Inversión Ads: ${fmt(impAds)}<br>Total Facturado (Bruto): ${fmt(curStats.brutas)}<hr/>Proporción = ${fmt(invVsVentas,'dec')}%` } },
         { label: 'Margen Operativo', val: margenNeto, prev: 0, t: 'pct', hideDelta:true,
@@ -302,13 +308,37 @@ function coreLogic(d1, d2, m1) {
     let upcHtml = '';
     if(cl.length > 0) {
         cl.sort((a,b) => new Date(a.vencimiento) - new Date(b.vencimiento));
+        
+        const getDaysStr = (venc) => {
+            const todayTz = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+            const vencTz = new Date(venc + 'T12:00:00').getTime();
+            const diffDays = Math.round((vencTz - todayTz)/(1000*60*60*24));
+            if(diffDays < 0) return `hace ${Math.abs(diffDays)} días (VENCIDO)`;
+            if(diffDays === 0) return `Hoy`;
+            if(diffDays === 1) return `Mañana`;
+            return `en ${diffDays} días`;
+        };
+
         const px = cl[0];
-        const days = Math.round((new Date(px.vencimiento) - today)/(1000*60*60*24));
+        const pxNext = cl.length > 1 ? cl[1] : null;
+
+        const str1 = getDaysStr(px.vencimiento);
         const deltaCheque = cajaActual - px.monto;
-        upcHtml = `<div class="cheque-banner">
-            <div><strong>Próximo cheque a liquidar en ${days >= 0 ? days : 0} días </strong> (${px.vencimiento}): A nombre de ${px.proveedor} </div>
-            <div style="font-size:1.1rem; font-weight:700;">Monto: ${fmt(px.monto)}</div>
-            <div style="color:${deltaCheque >= 0 ? 'var(--success)' : 'var(--danger)'}; font-weight:600;">ESTADO CAJA: ${deltaCheque >= 0 ? 'CUBIERTO (Sobran '+fmt(deltaCheque)+')' : 'FALTAN '+fmt(Math.abs(deltaCheque))}</div>
+        
+        let nextText = '';
+        if(pxNext) {
+            nextText = `<div style="font-size:0.85rem; color:var(--text-sec); margin-top:12px; border-top:1px solid rgba(0,0,0,0.05); padding-top:12px;">
+                Siguiente pago a liquidar <strong>${getDaysStr(pxNext.vencimiento)}</strong> (${formatDDMMAA(pxNext.vencimiento)}): a nombre de <span style="color:var(--text-main); font-weight:600;">${pxNext.proveedor}</span> por <strong>${fmt(pxNext.monto)}</strong>.
+            </div>`;
+        }
+
+        upcHtml = `<div class="cheque-banner" style="display:block;">
+            <div style="display:flex; justify-content:space-between; width:100%; align-items:center; flex-wrap:wrap; gap:12px;">
+                <div><strong>Próximo cheque a liquidar ${str1} </strong> (${formatDDMMAA(px.vencimiento)}): A nombre de ${px.proveedor} </div>
+                <div style="font-size:1.1rem; font-weight:700;">Monto: ${fmt(px.monto)}</div>
+                <div style="color:${deltaCheque >= 0 ? 'var(--success)' : 'var(--danger)'}; font-weight:600;">ESTADO CAJA: ${deltaCheque >= 0 ? 'CUBIERTO (Sobran '+fmt(deltaCheque)+')' : 'FALTAN '+fmt(Math.abs(deltaCheque))}</div>
+            </div>
+            ${nextText}
         </div>`;
     }
     document.getElementById('checkBannerContainer').innerHTML = upcHtml;
@@ -346,7 +376,8 @@ function coreLogic(d1, d2, m1) {
 
     charts.main = new Chart(document.getElementById('chartMain'), {
         type: 'line', data: {
-            labels: daysArr.map(d => d.slice(5)), // MM-DD
+            labels: daysArr.map(d => formatDDMMAA(d)),
+
             datasets: [{ label:'Facturación Diaria MTD', data:amountsArr, borderColor:'#18181b', backgroundColor:'rgba(24,24,27,0.05)', fill:true, borderWidth:2, tension:0.2, pointRadius:4, pointHoverRadius:6 }]
         }, options: { responsive:true, maintainAspectRatio:false, plugins:{ tooltip:ttip, legend:{display:false} }, scales:{ x:{grid:{display:false}}, y:{grid:{color:'#f4f4f5'}, ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'k'}} } }
     });
