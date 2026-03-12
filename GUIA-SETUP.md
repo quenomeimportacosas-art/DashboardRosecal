@@ -74,12 +74,16 @@ function configurarHojas() {
     dm.setColumnWidth(1, 120);
     for (var c = 2; c <= 12; c++) { dm.setColumnWidth(c, 160); }
 
+    console.log('Fueron borradas ' + borradas + ' hojas viejas.');
+    console.log('Creando hoja "Datos Manuales" con 12 columnas (incluyendo Gastos Operativos)...');
+
     SpreadsheetApp.getUi().alert(
       '✅ ¡Listo!\n\n' +
       '• Se borraron ' + borradas + ' hojas viejas.\n' +
       '• Se creó la hoja "Datos Manuales" con 12 columnas (incluyendo Gastos Operativos).\n\n' +
       'Ahora hacé una Nueva Implementación (Deploy) y pegá la URL en tu index.html.'
     );
+    console.log('✅ ¡Listo! Ejecución finalizada con éxito.');
   } else {
     // Si la hoja ya existe, asegurarnos de que la columna Gastos Operativos exista
     var headers = dm.getRange(1, 1, 1, dm.getLastColumn()).getValues()[0];
@@ -88,11 +92,14 @@ function configurarHojas() {
         if (String(headers[h]).toLowerCase().indexOf('gastos operativos') >= 0) tieneGastosOp = true;
     }
     if (!tieneGastosOp) {
+        console.log('Falta la columna "Gastos Operativos", agregándola al final...');
         dm.getRange(1, 12).setValue('Gastos Operativos');
         dm.getRange(1, 12).setFontWeight('bold').setBackground('#f0f0f0');
         dm.setColumnWidth(12, 160);
+        console.log('ℹ️ Se agregó la columna "Gastos Operativos" a Datos Manuales.');
         SpreadsheetApp.getUi().alert('ℹ️ Se agregó la columna "Gastos Operativos" a Datos Manuales.');
     } else {
+        console.log('La hoja "Datos Manuales" ya existía y está correcta.');
         SpreadsheetApp.getUi().alert(
           'ℹ️ La hoja "Datos Manuales" ya existía.\n' +
           'Se borraron ' + borradas + ' hojas viejas.'
