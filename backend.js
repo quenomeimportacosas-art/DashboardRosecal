@@ -169,9 +169,9 @@ var gasBackend = {
 
     readOrders: function(ss, targetDate) {
         var sheet = ss.getSheetByName('Respuestas de formulario 1');
-        if (!sheet) return [];
+        if (!sheet) return { current: [], global: { totalBruto: 0, totalCobrado: 0, porMes: {}, deudaContraReembolso: 0, deudaMoto: 0, totalDeuda: 0 } };
         var data = sheet.getDataRange().getValues();
-        if (data.length < 2) return [];
+        if (data.length < 2) return { current: [], global: { totalBruto: 0, totalCobrado: 0, porMes: {}, deudaContraReembolso: 0, deudaMoto: 0, totalDeuda: 0 } };
         var h = data[0].map(function(k){ return String(k).trim().toLowerCase() });
         
         var ci = {
@@ -184,30 +184,51 @@ var gasBackend = {
 
         var targetYMonth = targetDate.getFullYear() + '-' + this.padZero(targetDate.getMonth() + 1);
         var orders = [];
+        var glob = { totalBruto: 0, totalCobrado: 0, porMes: {}, deudaContraReembolso: 0, deudaMoto: 0, totalDeuda: 0 };
         
         for (var i = 1; i < data.length; i++) {
             var r = data[i];
             if (!r[ci.fecha >= 0 ? ci.fecha : 0]) continue;
             
-            // Extraer TS full (e.g. "2026-03-01T15:30:00.000Z")
             var rawDate = r[ci.fecha >= 0 ? ci.fecha : 0];
             var tsFull = "";
             if (rawDate instanceof Date) { tsFull = rawDate.toISOString(); }
             else { tsFull = new Date(rawDate).toISOString(); }
+            if(!tsFull) continue;
             
-            // Filtrar mes
-            if (!tsFull || tsFull.indexOf(targetYMonth) !== 0) continue; 
+            var yMonth = tsFull.substring(0, 7);
             
             var imp = this.parseAmount(r[ci.importe >= 0 ? ci.importe : 0]);
             if (imp <= 0) continue;
+
+            var st = String(r[ci.status >= 0 ? ci.status : 14] || '').toUpperCase();
+            var cond = String(r[ci.condicion >= 0 ? ci.condicion : 12] || '').toUpperCase();
             
-            orders.push({
-            date: tsFull,
-            amount: imp,
-            status: String(r[ci.status >= 0 ? ci.status : 14] || '').toUpperCase()
-            });
+            if (st !== 'ANULADO') {
+                glob.totalBruto += imp;
+                if (!glob.porMes[yMonth]) glob.porMes[yMonth] = { bruto: 0, cobrado: 0 };
+                glob.porMes[yMonth].bruto += imp;
+                
+                if (st === 'COBRADO') {
+                    glob.totalCobrado += imp;
+                    glob.porMes[yMonth].cobrado += imp;
+                } else {
+                    glob.totalDeuda += imp;
+                    if (cond.indexOf('REEMBOLSO') >= 0) glob.deudaContraReembolso += imp;
+                    else if (cond.indexOf('MOTO') >= 0 || cond.indexOf('MENSAJERIA') >= 0 || cond.indexOf('ENVI') >= 0) glob.deudaMoto += imp;
+                }
+            }
+            
+            if (yMonth === targetYMonth) {
+                orders.push({
+                    date: tsFull,
+                    amount: imp,
+                    status: st,
+                    condicion: cond
+                });
+            }
         }
-        return orders;
+        return { current: orders, global: glob };
     },
 
     readMonthlySummary: function(ss) {
@@ -283,7 +304,8 @@ var gasBackend = {
             sales: slData,
             chequesActivos: cheques,
             totalChequesActivos: totalChequesActivos,
-            orders: orders // Export full month orders with FULL timestamp
+            orders: orders.current, // Export full month orders with FULL timestamp
+            globalStats: orders.global // Agregado para histórico
         };
     },
 
