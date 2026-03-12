@@ -245,7 +245,7 @@ function readCheques(ss) {
     var r = data[i];
     if (!r[ci.numero >= 0 ? ci.numero : 0]) continue;
     var est = String(r[ci.estado >= 0 ? ci.estado : 5] || '').toUpperCase();
-    if (est === 'ACTIVO') {
+    if (est === 'ACTIVO' || est === 'VENCIDO') {
         cheques.push({
           proveedor: String(r[ci.proveedor >= 0 ? ci.proveedor : 1] || ''),
           vencimiento: fmtDate(r[ci.vencimiento >= 0 ? ci.vencimiento : 3]),

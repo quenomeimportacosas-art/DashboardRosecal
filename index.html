@@ -298,7 +298,7 @@ function coreLogic(d1, d2, m1) {
         { label: 'Deuda Pendiente de Cobro', val: sl.deudaClientes||0, prev: 0, t: 'cur', inv: true, hideDelta:true, 
           info: { desc:'Dinero que tienen los clientes o cadetas, aún no ingresado.', calc:`Total Ventas marcadas pendientes o deuda activa.<br>Monto: ${fmt(sl.deudaClientes||0)}`} },
         { label: 'Cheques Emitidos', val: chequesEmitidosActivos, prev: 0, t: 'cur', inv: true, hideDelta:true,
-          info: { desc:'Total de pasivos diferidos sin vencer.', calc:`Cheques con status ACTIVO: ${fmt(chequesEmitidosActivos)}`} },
+          info: { desc:'Total de pasivos diferidos.', calc:`Cheques (ACTIVO/VENCIDO): ${fmt(chequesEmitidosActivos)}`} },
         { label: 'Posición Neta (Liquidez)', val: posNeta, prev: 0, t: 'cur', hideDelta:true,
           info: { desc:'Tus Activos reales restando TODOS tus pasivos exigibles y futuros.', calc:`Activos (Caja + Deudas clientes): ${fmt(activos)}<br>Pasivos (Deuda Prov + Cheques): ${fmt(pasivos)}<hr/>Posición: ${fmt(posNeta)}`} }
     ]);
