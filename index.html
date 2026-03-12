@@ -305,7 +305,7 @@ function coreLogic(d1, d2, m1) {
 
     // Próximos cheques
     const cl = d1.chequesActivos || [];
-    let upcHtml = '';
+    let upcHtml = '', vencidosHtml = '';
     if(cl.length > 0) {
         cl.sort((a,b) => new Date(a.vencimiento) - new Date(b.vencimiento));
         
@@ -319,29 +319,53 @@ function coreLogic(d1, d2, m1) {
             return `en ${diffDays} días`;
         };
 
-        const px = cl[0];
-        const pxNext = cl.length > 1 ? cl[1] : null;
+        const activosList = cl.filter(c => c.estado === 'ACTIVO');
+        const vencidosList = cl.filter(c => c.estado === 'VENCIDO');
 
-        const str1 = getDaysStr(px.vencimiento);
-        const deltaCheque = cajaActual - px.monto;
-        
-        let nextText = '';
-        if(pxNext) {
-            nextText = `<div style="font-size:0.85rem; color:var(--text-sec); margin-top:12px; border-top:1px solid rgba(0,0,0,0.05); padding-top:12px;">
-                Siguiente pago a liquidar <strong>${getDaysStr(pxNext.vencimiento)}</strong> (${formatDDMMAA(pxNext.vencimiento)}): a nombre de <span style="color:var(--text-main); font-weight:600;">${pxNext.proveedor}</span> por <strong>${fmt(pxNext.monto)}</strong>.
+        if(activosList.length > 0) {
+            const px = activosList[0];
+            const pxNext = activosList.length > 1 ? activosList[1] : null;
+
+            const str1 = getDaysStr(px.vencimiento);
+            const deltaCheque = cajaActual - px.monto;
+            
+            let nextText = '';
+            if(pxNext) {
+                nextText = `<div style="font-size:0.85rem; color:var(--text-sec); margin-top:12px; border-top:1px solid rgba(0,0,0,0.05); padding-top:12px;">
+                    Siguiente pago a liquidar <strong>${getDaysStr(pxNext.vencimiento)}</strong> (${formatDDMMAA(pxNext.vencimiento)}): a nombre de <span style="color:var(--text-main); font-weight:600;">${pxNext.proveedor}</span> por <strong>${fmt(pxNext.monto)}</strong>.
+                </div>`;
+            }
+
+            upcHtml = `<div class="cheque-banner" style="display:block;">
+                <div style="display:flex; justify-content:space-between; width:100%; align-items:center; flex-wrap:wrap; gap:12px;">
+                    <div><strong>Próximo cheque a liquidar ${str1} </strong> (${formatDDMMAA(px.vencimiento)}): A nombre de ${px.proveedor} </div>
+                    <div style="font-size:1.1rem; font-weight:700;">Monto: ${fmt(px.monto)}</div>
+                    <div style="color:${deltaCheque >= 0 ? 'var(--success)' : 'var(--danger)'}; font-weight:600;">ESTADO CAJA: ${deltaCheque >= 0 ? 'CUBIERTO (Sobran '+fmt(deltaCheque)+')' : 'FALTAN '+fmt(Math.abs(deltaCheque))}</div>
+                </div>
+                ${nextText}
             </div>`;
         }
 
-        upcHtml = `<div class="cheque-banner" style="display:block;">
-            <div style="display:flex; justify-content:space-between; width:100%; align-items:center; flex-wrap:wrap; gap:12px;">
-                <div><strong>Próximo cheque a liquidar ${str1} </strong> (${formatDDMMAA(px.vencimiento)}): A nombre de ${px.proveedor} </div>
-                <div style="font-size:1.1rem; font-weight:700;">Monto: ${fmt(px.monto)}</div>
-                <div style="color:${deltaCheque >= 0 ? 'var(--success)' : 'var(--danger)'}; font-weight:600;">ESTADO CAJA: ${deltaCheque >= 0 ? 'CUBIERTO (Sobran '+fmt(deltaCheque)+')' : 'FALTAN '+fmt(Math.abs(deltaCheque))}</div>
-            </div>
-            ${nextText}
-        </div>`;
+        if(vencidosList.length > 0) {
+            vencidosHtml = `<div style="margin-bottom:16px;">
+                <div style="font-size:0.85rem; font-weight:600; color:var(--danger); margin-bottom:8px; text-transform:uppercase;">Cheques Vencidos a Regularizar</div>
+                ${vencidosList.map(venc => `
+                    <div style="background:#fef2f2; border:1px solid #fca5a5; border-radius:var(--radius); padding:12px 16px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <span style="font-weight:600; color:var(--danger);">${venc.proveedor}</span> — 
+                            <span style="color:var(--text-sec); font-size:0.85rem;">Venció el ${formatDDMMAA(venc.vencimiento)}</span>
+                            <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Cheque Nº: ${venc.numero}</div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:16px;">
+                            <span style="font-weight:700; font-size:1.1rem; color:var(--text-main);">${fmt(venc.monto)}</span>
+                            <button class="btn btn-primary" style="background:var(--success); border-color:var(--success); padding:6px 12px; font-size:0.8rem;" onclick="markChequeAsPaid('${venc.numero}')">Marcar Pagado</button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>`;
+        }
     }
-    document.getElementById('checkBannerContainer').innerHTML = upcHtml;
+    document.getElementById('checkBannerContainer').innerHTML = vencidosHtml + upcHtml;
 
     /* 3. CRECIMIENTO Y VENTAS MTD */
     const tktPromo = curStats.validOrders > 0 ? (curStats.brutas / curStats.validOrders) : 0;
@@ -440,6 +464,19 @@ async function saveData() {
         setTimeout(()=>renderDashboard(), 1500);
     } catch(e) { alert('Error al guardar.'); }
     document.getElementById('btnSave').innerText = 'Guardar Datos';
+}
+
+async function markChequeAsPaid(numero) {
+    if(!confirm('¿Estás seguro que querés marcar el cheque Nº ' + numero + ' como PAGADO en la hoja de cálculo?')) return;
+    document.getElementById('dashboardLoader').classList.add('active');
+    const p = new URLSearchParams({ action: 'update_cheque', numero: numero, nuevoEstado: 'PAGADO' });
+    try {
+        await fetch(APPS_SCRIPT_URL + '?' + p.toString(), {mode:'no-cors'});
+        setTimeout(()=>renderDashboard(), 1500);
+    } catch(e) { 
+        alert('Hubo un error al comunicarse con la hoja.'); 
+        document.getElementById('dashboardLoader').classList.remove('active'); 
+    }
 }
 
 renderDashboard();
