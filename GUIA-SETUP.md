@@ -14,7 +14,7 @@ Copiá y pegá **todo** este código:
 
 ```javascript
 // ╔══════════════════════════════════════════════════════════════╗
-// ║  DASHBOARD ROSECAL 2026 — Apps Script Backend v3           ║
+// ║  DASHBOARD ROSECAL 2026 — Apps Script Backend v4           ║
 // ║  Funciones:                                                ║
 // ║  • configurarHojas()  → Ejecutar desde el editor (▶ Run)   ║
 // ║  • doGet(e)           → API web (read / write)             ║
@@ -26,10 +26,10 @@ Copiá y pegá **todo** este código:
 // Borra las hojas viejas y crea "Datos Manuales"
 // ══════════════════════════════════════════════════════════════
 function configurarHojas() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
 
   // Lista de hojas viejas a borrar
-  const hojasViejas = [
+  var hojasViejas = [
     'Saldos Tesoreria',
     'Deudas y Compromisos',
     'Cuentas por Cobrar',
@@ -38,14 +38,14 @@ function configurarHojas() {
     'Ranking Publicaciones'
   ];
 
-  let borradas = 0;
-  hojasViejas.forEach(function(nombre) {
-    var hoja = ss.getSheetByName(nombre);
+  var borradas = 0;
+  for (var i = 0; i < hojasViejas.length; i++) {
+    var hoja = ss.getSheetByName(hojasViejas[i]);
     if (hoja) {
       ss.deleteSheet(hoja);
       borradas++;
     }
-  });
+  }
 
   // Crear "Datos Manuales" si no existe
   var dm = ss.getSheetByName('Datos Manuales');
@@ -62,37 +62,48 @@ function configurarHojas() {
       'Deuda Mercado Pago',
       'Inversion Publicidad',
       'Gasto Marketing',
-      'Ventas Corporativas'
+      'Ventas Corporativas',
+      'Gastos Operativos'
     ]);
     // Formato
-    dm.getRange(1, 1, 1, 11).setFontWeight('bold').setBackground('#f0f0f0');
+    dm.getRange(1, 1, 1, 12).setFontWeight('bold').setBackground('#f0f0f0');
     dm.setFrozenRows(1);
-    dm.getRange('B:K').setNumberFormat('$#,##0');
+    dm.getRange('B:L').setNumberFormat('$#,##0');
     dm.getRange('A:A').setNumberFormat('dd/MM/yyyy');
     // Ancho de columnas
     dm.setColumnWidth(1, 120);
-    for (var c = 2; c <= 11; c++) { dm.setColumnWidth(c, 160); }
+    for (var c = 2; c <= 12; c++) { dm.setColumnWidth(c, 160); }
 
     SpreadsheetApp.getUi().alert(
       '✅ ¡Listo!\n\n' +
       '• Se borraron ' + borradas + ' hojas viejas.\n' +
-      '• Se creó la hoja "Datos Manuales" con 11 columnas.\n\n' +
+      '• Se creó la hoja "Datos Manuales" con 12 columnas (incluyendo Gastos Operativos).\n\n' +
       'Ahora hacé una Nueva Implementación (Deploy) y pegá la URL en tu index.html.'
     );
   } else {
-    SpreadsheetApp.getUi().alert(
-      'ℹ️ La hoja "Datos Manuales" ya existía.\n' +
-      'Se borraron ' + borradas + ' hojas viejas.'
-    );
+    // Si la hoja ya existe, asegurarnos de que la columna Gastos Operativos exista
+    var headers = dm.getRange(1, 1, 1, dm.getLastColumn()).getValues()[0];
+    var tieneGastosOp = false;
+    for (var h = 0; h < headers.length; h++) {
+        if (String(headers[h]).toLowerCase().indexOf('gastos operativos') >= 0) tieneGastosOp = true;
+    }
+    if (!tieneGastosOp) {
+        dm.getRange(1, 12).setValue('Gastos Operativos');
+        dm.getRange(1, 12).setFontWeight('bold').setBackground('#f0f0f0');
+        dm.setColumnWidth(12, 160);
+        SpreadsheetApp.getUi().alert('ℹ️ Se agregó la columna "Gastos Operativos" a Datos Manuales.');
+    } else {
+        SpreadsheetApp.getUi().alert(
+          'ℹ️ La hoja "Datos Manuales" ya existía.\n' +
+          'Se borraron ' + borradas + ' hojas viejas.'
+        );
+    }
   }
 }
 
 // ══════════════════════════════════════════════════════════════
 // FUNCIÓN 2: doGet(e)
 // ── API Web — el Dashboard llama a esta función ──
-// Acciones:
-//   (sin parámetro o action=read)  → devuelve JSON con todos los datos
-//   action=write&bancoCuenta=X&... → graba fila en "Datos Manuales"
 // ══════════════════════════════════════════════════════════════
 function doGet(e) {
   try {
@@ -117,7 +128,8 @@ function doGet(e) {
         toNum(p.deudaMP),
         toNum(p.inversionPublicidad),
         toNum(p.gastoMarketing),
-        toNum(p.ventasCorporativas)
+        toNum(p.ventasCorporativas),
+        toNum(p.gastosOperativos)
       ]);
       return jsonOut({ success: true, message: 'Datos guardados correctamente' });
     }
@@ -159,7 +171,8 @@ function readManualData(ss, targetDate) {
     fecha: '', bancoCuenta: 0, saldoMP: 0, efectivoCaja: 0,
     inversiones: 0, deudaProveedores: 0, deudaServicios: 0,
     deudaMP: 0, inversionPublicidad: 0, gastoMarketing: 0,
-    ventasCorporativas: 0, totalLiquidez: 0, totalPasivo: 0,
+    ventasCorporativas: 0, gastosOperativos: 0, 
+    totalLiquidez: 0, totalPasivo: 0,
     prev: null, history: []
   };
 
@@ -188,7 +201,8 @@ function readManualData(ss, targetDate) {
       deudaMP: toNum(row[7]),
       inversionPublicidad: toNum(row[8]),
       gastoMarketing: toNum(row[9]),
-      ventasCorporativas: toNum(row[10])
+      ventasCorporativas: toNum(row[10]),
+      gastosOperativos: toNum(row[11])
     });
   }
 
@@ -211,6 +225,7 @@ function readManualData(ss, targetDate) {
     inversionPublicidad: last.inversionPublicidad,
     gastoMarketing: last.gastoMarketing,
     ventasCorporativas: last.ventasCorporativas,
+    gastosOperativos: last.gastosOperativos,
     totalLiquidez: totalLiquidez,
     totalPasivo: totalPasivo,
     prev: prev,
@@ -294,7 +309,7 @@ function readOrders(ss, targetDate) {
   return orders;
 }
 
-// ── LEER RESUMEN MENSUAL (Calculo Ganancias) ──
+// ── LEER RESUMEN MENSUAL (Calculo Ganancias - Costos incl.) ──
 function readMonthlySummary(ss) {
   var sheet = ss.getSheetByName('Calculo Ganancias');
   if (!sheet) return [];
@@ -309,6 +324,12 @@ function readMonthlySummary(ss) {
   var vti = findCol(h, 'ventas total');
   var vci = findCol(h, 'ventas cobrad');
   var ipi = findCol(h, 'inversi');
+  
+  var cbi = findCol(h, 'costo beato');
+  if (cbi < 0) cbi = findCol(h, 'beato');
+  
+  var cli = findCol(h, 'costo logistica');
+  if (cli < 0) cli = findCol(h, 'logistica');
 
   if (mi < 0) return [];
   var monthly = [];
@@ -319,7 +340,9 @@ function readMonthlySummary(ss) {
       mes: mes,
       ventasTotal: toNum(data[i][vti >= 0 ? vti : mi + 1]),
       ventasCobrado: toNum(data[i][vci >= 0 ? vci : mi + 2]),
-      inversionPub: toNum(data[i][ipi >= 0 ? ipi : mi + 3])
+      inversionPub: toNum(data[i][ipi >= 0 ? ipi : mi + 3]),
+      costoBeato: cbi >= 0 ? toNum(data[i][cbi]) : 0,
+      costoLogistica: cli >= 0 ? toNum(data[i][cli]) : 0
     });
   }
   return monthly;
@@ -396,6 +419,7 @@ function readCheques(ss) {
 function buildResponse(orders, monthly, rawGanancias, cashFlow, cheques, manual, targetDate) {
   var monthNames = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
   var currentMonthName = monthNames[targetDate.getMonth()];
+  var curYearMonth = targetDate.getFullYear() + '-' + padZero(targetDate.getMonth() + 1);
   
   // --- Cash Flow KPIs ---
   var cfData = {
@@ -444,10 +468,11 @@ function buildResponse(orders, monthly, rawGanancias, cashFlow, cheques, manual,
   // --- Sales KPIs ---
   var slData = {
     currentMonth: currentMonthName, ventasTotal: 0, ventasCobrado: 0,
-    inversionPub: 0, prevVentasTotal: 0, prevVentasCobrado: 0, prevInversionPub: 0,
+    inversionPub: 0, costoBeato: 0, costoLogistica: 0,
+    prevVentasTotal: 0, prevVentasCobrado: 0, prevInversionPub: 0,
     ventasTelefonicas: rawGanancias.ventasTelefonicas,
     deudaClientes: rawGanancias.deudaClientes,
-    deudaDuek: 0, ventasMercadoLibre: 0
+    deudaDuek: 0, ventasMercadoLibre: 0, pedidosNuevosMonto: 0, chequesMes: 0
   };
 
   if (monthly.length > 0) {
@@ -463,6 +488,8 @@ function buildResponse(orders, monthly, rawGanancias, cashFlow, cheques, manual,
     slData.ventasTotal = last ? last.ventasTotal : 0;
     slData.ventasCobrado = last ? last.ventasCobrado : 0;
     slData.inversionPub = last ? last.inversionPub : 0;
+    slData.costoBeato = last ? last.costoBeato : 0;
+    slData.costoLogistica = last ? last.costoLogistica : 0;
     if (mIdx > 0) {
       var prev = monthly[mIdx - 1];
       slData.prevVentasTotal = prev.ventasTotal;
@@ -484,8 +511,6 @@ function buildResponse(orders, monthly, rawGanancias, cashFlow, cheques, manual,
   var statusCount = {};
   var statusAmount = {};
 
-  var curYearMonth = targetDate.getFullYear() + '-' + padZero(targetDate.getMonth() + 1);
-
   for (var o = 0; o < orders.length; o++) {
     var ord = orders[o];
     var s = String(ord.status || '');
@@ -493,6 +518,9 @@ function buildResponse(orders, monthly, rawGanancias, cashFlow, cheques, manual,
 
     statusCount[s] = (statusCount[s] || 0) + 1;
     statusAmount[s] = (statusAmount[s] || 0) + ord.amount;
+    
+    // Contabilizamos todos los pedidos como monto nuevo bruto, excepto los anulados.
+    if (sUp !== 'ANULADO') slData.pedidosNuevosMonto += ord.amount;
 
     // Deuda Duek
     if (sUp.indexOf('DUEK') >= 0) {
@@ -512,32 +540,35 @@ function buildResponse(orders, monthly, rawGanancias, cashFlow, cheques, manual,
   var chequesByMonth = {};
   var totalChequesActivos = 0;
   var cantidadActivos = 0;
+  var chequesDelMesPagar = 0;
+
   for (var ch = 0; ch < cheques.length; ch++) {
     if ((cheques[ch].estado || '').toUpperCase() === 'ACTIVO') {
-      var monthKey = (cheques[ch].cierre || cheques[ch].vencimiento || 'Sin fecha').substring(0, 7);
+      var cDateStr = cheques[ch].cierre || cheques[ch].vencimiento || 'Sin fecha';
+      var monthKey = cDateStr.substring(0, 7);
+      
       chequesByMonth[monthKey] = (chequesByMonth[monthKey] || 0) + cheques[ch].monto;
       totalChequesActivos += cheques[ch].monto;
       cantidadActivos++;
+
+      // Cheques a pagar en ESTE mes en particular (para el margen neto)
+      if (monthKey === curYearMonth) {
+          chequesDelMesPagar += cheques[ch].monto;
+      }
     }
   }
+  slData.chequesMes = chequesDelMesPagar;
+  
   var sortedChequeKeys = Object.keys(chequesByMonth).sort();
   var chequesMontos = [];
   for (var ck = 0; ck < sortedChequeKeys.length; ck++) {
     chequesMontos.push(chequesByMonth[sortedChequeKeys[ck]]);
   }
 
-  // --- Comparison ---
-  var comparison = [];
-  for (var cm = monthly.length - 2; cm >= 0 && comparison.length < 3; cm--) {
-    comparison.push({
-      period: monthly[cm].mes.charAt(0).toUpperCase() + monthly[cm].mes.slice(1),
-      value: monthly[cm].ventasTotal
-    });
-  }
-
   // --- Transactions (last 50 for the selected month) ---
   var txs = orders.slice(Math.max(0, orders.length - 50)).reverse();
 
+  // Calcular totales (no enviar historicos de transacciones grandes para no saturar)
   return {
     lastUpdate: new Date().toISOString(),
     computedMonth: curYearMonth, // El mes que se computó (YYYY-MM)
@@ -547,13 +578,13 @@ function buildResponse(orders, monthly, rawGanancias, cashFlow, cheques, manual,
     monthlyEvolution: mEvolution,
     ordersByStatus: statusCount,
     orderAmountByStatus: statusAmount,
+    totalOrders: orders.length,
     cheques: {
       labels: sortedChequeKeys,
       montos: chequesMontos,
       totalActivos: totalChequesActivos,
       cantidad: cantidadActivos
     },
-    comparison: comparison,
     transactions: txs
   };
 }
@@ -602,68 +633,17 @@ function parseAmount(v) {
 }
 ```
 
-### Paso 3: Ejecutar `configurarHojas` (ESTO ES NUEVO)
+### Paso 3: Ejecutar `configurarHojas` para actualizar a versión 4
 
-Antes de publicar, vas a correr la función que borra las hojas viejas y crea "Datos Manuales":
-
-1. En el editor de Apps Script, arriba hay un **menú desplegable** que dice `doGet` o `myFunction`
-2. Hacé clic en ese menú y seleccioná **`configurarHojas`**
-3. Hacé clic en el botón **▶ Ejecutar** (Run)
-4. Si te pide permisos, **autorizá** (es tu cuenta)
-5. Te va a aparecer un cartel diciendo cuántas hojas borró y que creó "Datos Manuales"
+1. En el editor de Apps Script, arriba seleccioná **`configurarHojas`** del menú desplegable.
+2. Apretá **▶ Ejecutar (Run)**.
+3. El script va a detectar que te falta la columna "Gastos Operativos" y la va a agregar automáticamente a tu hoja "Datos Manuales".
 
 ### Paso 4: Publicar (Deploy)
 
-1. Hacé clic en **Implementar → Nueva implementación**
-2. En **Tipo**, elegí **App web**
-3. Configurá:
-   - **Descripción:** Dashboard Rosecal API v3
-   - **Ejecutar como:** Yo mismo
-   - **Quién tiene acceso:** Cualquiera
+1. Hacé clic en **Implementar → Administrar implementaciones**
+2. Lápiz (editar)
+3. En **Versión**, cambiá a **Nueva versión**
 4. Hacé clic en **Implementar**
-5. **Copiá la URL** resultante y **pegámela en el chat**
 
-### Paso 5: Conectar al Dashboard
-
-1. Abrí `index.html` con un editor de texto
-2. Buscá esta línea:
-```javascript
-APPS_SCRIPT_URL: '',
-```
-3. Pegá tu URL:
-```javascript
-APPS_SCRIPT_URL: 'https://script.google.com/macros/s/TU-NUEVA-URL/exec',
-```
-4. Guardá el archivo
-
----
-
-## Hojas que lee el Dashboard
-
-| Pestaña | Qué lee | Para qué |
-|---------|---------|----------|
-| `Respuestas de formulario 1` | Pedidos (fecha, cliente, importe, provincia, status) | Tabla, filtros, gráfico de estados |
-| `Calculo Ganancias` | Columnas A (fecha), B (importe), C (status), H (mes) | Ventas Telefónicas, Deuda Clientes, evolución |
-| `Flujo Operativo` | Conceptos transpuestos por mes | KPIs de caja, gráfico de flujo |
-| `Cheques` | Número, monto, estado, vencimiento | Gráfico de cheques activos |
-| `Datos Manuales` | Banco, Saldo MP, Efectivo, Inversiones, Deudas, Marketing | Tesorería, pasivos, publicidad |
-
-> ⚠️ **Importante:** Los nombres de las pestañas deben coincidir exactamente.
-
----
-
-## Hosting Gratuito
-
-| Opción | Cómo |
-|--------|------|
-| **Local** | Doble clic en `index.html` |
-| **Netlify** | Arrastrá la carpeta a [app.netlify.com](https://app.netlify.com) |
-| **GitHub Pages** | Subí a un repo → Settings → Pages → Deploy |
-
----
-
-## Mantenimiento
-
-- **Datos manuales:** Se cargan desde el botón "📋 Cargar Datos" en el Dashboard
-- **Datos automáticos:** Se leen solos de las hojas existentes
-- **Actualización:** Cada 60 minutos (o botón "Sincronizar")
+> No hace falta que cambies la URL en tu HTML, la URL sigue siendo exactamente la misma.

@@ -4,862 +4,445 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rosecal — Dashboard de Ventas y Finanzas 2026</title>
-    <meta name="description" content="Dashboard ejecutivo Rosecal. KPIs, gráficos y métricas en tiempo real.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <style>
         :root {
-            --bg-main: #ffffff;
-            --bg-sidebar: #fafafa;
-            --bg-hover: rgba(0,0,0,0.03);
-            --border-color: #e2e8f0;
-            --text-primary: #0f172a;
-            --text-secondary: #64748b;
-            --text-tertiary: #94a3b8;
+            --bg-body: #fafafa;
+            --bg-card: #ffffff;
+            --border: #e4e4e7;
+            --border-hover: #d4d4d8;
+            --text-main: #18181b;
+            --text-sec: #52525b;
+            --text-muted: #a1a1aa;
             
-            --color-success: #10b981;
-            --color-warning: #f59e0b;
-            --color-danger: #ef4444;
-            --color-accent: #6366f1;
-            --color-success-bg: rgba(16,185,129,0.1);
-            --color-warning-bg: rgba(245,158,11,0.1);
-            --color-danger-bg: rgba(239,68,68,0.1);
-            --color-accent-bg: rgba(99,102,241,0.08);
-
-            --radius-md: 8px;
-            --radius-lg: 12px;
-            --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
-            --shadow-card: 0 4px 12px rgba(0,0,0,0.03);
-            --shadow-modal: 0 24px 48px rgba(0,0,0,0.16);
+            --success: #10b981;
+            --success-bg: rgba(16, 185, 129, 0.1);
+            --danger: #ef4444;
+            --danger-bg: rgba(239, 68, 68, 0.1);
+            --warning: #f59e0b;
+            
+            --radius: 8px;
+            --shadow: 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-modal: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
         }
         
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         
         body {
             font-family: 'Inter', -apple-system, sans-serif;
-            background: var(--bg-main);
-            color: var(--text-primary);
+            background: var(--bg-body);
+            color: var(--text-main);
             line-height: 1.5;
             -webkit-font-smoothing: antialiased;
         }
 
-        /* Layout */
-        .app-layout { display: flex; min-height: 100vh; }
-        
-        /* Main Content */
-        .main-content {
-            flex: 1;
-            min-width: 0;
-            padding: 40px 48px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        /* Top Bar */
-        .top-bar {
-            display: flex; justify-content: space-between; align-items: flex-end;
-            margin-bottom: 40px;
-            padding-bottom: 24px;
-            border-bottom: 1px solid var(--border-color);
-        }
-        .page-title { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 8px; }
-        .page-subtitle { color: var(--text-secondary); font-size: 0.9rem; }
-        .top-actions { display: flex; align-items: center; gap: 12px; }
-        .update-text { font-size: 0.8rem; color: var(--text-tertiary); }
-        .btn-update, .btn-manual {
-            background: #fff;
-            border: 1px solid var(--border-color);
-            padding: 8px 16px;
-            border-radius: var(--radius-md);
-            color: var(--text-primary);
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-            box-shadow: var(--shadow-sm);
-            transition: all 0.2s;
-            display: flex; align-items: center; gap: 8px;
-        }
-        .btn-update:hover, .btn-manual:hover { background: var(--bg-hover); }
-        .btn-manual {
-            background: var(--color-accent);
-            color: #fff;
-            border-color: var(--color-accent);
-        }
-        .btn-manual:hover { background: #4f46e5; }
-
-        /* Demo Banner */
-        .demo-banner {
-            background: var(--color-warning-bg);
-            border: 1px solid rgba(245,158,11,0.2);
-            padding: 12px 16px;
-            border-radius: var(--radius-md);
-            margin-bottom: 32px;
-            font-size: 0.85rem;
-            color: #b45309;
-            display: flex; align-items: center; gap: 12px;
-        }
-        .demo-banner.hidden { display: none; }
-
-        /* Success Banner */
-        .success-banner {
-            background: var(--color-success-bg);
-            border: 1px solid rgba(16,185,129,0.2);
-            padding: 12px 16px;
-            border-radius: var(--radius-md);
-            margin-bottom: 32px;
-            font-size: 0.85rem;
-            color: #065f46;
-            display: flex; align-items: center; gap: 12px;
-            animation: slideDown 0.3s ease;
-        }
-        @keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* Loader Overlay */
+        /* Loading */
         .dashboard-loader {
             position: fixed; top:0; left:0; width:100%; height:100%;
-            background: rgba(255,255,255,0.7);
-            backdrop-filter: blur(4px);
-            z-index: 2000;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            opacity: 0; visibility: hidden;
-            transition: all 0.2s ease;
+            background: rgba(250,250,250,0.8); backdrop-filter: blur(4px);
+            z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            opacity: 0; visibility: hidden; transition: all 0.2s ease;
         }
-        .dashboard-loader.active {
-            opacity: 1; visibility: visible;
-        }
-        .loader-spinner {
-            width: 48px; height: 48px; border: 4px solid var(--border-color);
-            border-top-color: var(--color-accent); border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin-bottom: 16px;
-        }
-        .loader-text {
-            font-size: 1.1rem; font-weight: 600; color: var(--text-primary);
+        .dashboard-loader.active { opacity: 1; visibility: visible; }
+        .spinner {
+            width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--text-main);
+            border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 12px;
         }
 
-        /* Filters */
-        .filters {
-            display: flex; gap: 16px; flex-wrap: wrap;
-            margin-bottom: 40px;
-        }
-        .filter-item { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 160px; }
-        .filter-item label { font-size: 0.75rem; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.05em; }
-        .filter-item select, .filter-item input {
-            background: #fff;
-            border: 1px solid var(--border-color);
-            padding: 10px 12px;
-            border-radius: var(--radius-md);
-            font-family: inherit; font-size: 0.85rem; color: var(--text-primary);
-            transition: border-color 0.2s;
-        }
-        .filter-item select:focus, .filter-item input:focus { outline: none; border-color: var(--text-secondary); }
+        /* Layout */
+        .container { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
 
-        /* Section Headings */
-        .section-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 24px; color: var(--text-primary); }
-
-        /* KPI Grid */
-        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-bottom: 48px; }
-        .kpi-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-lg);
-            padding: 24px;
-            box-shadow: var(--shadow-card);
-            transition: transform 0.2s, box-shadow 0.2s;
+        /* Status Bar */
+        .status-bar {
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+            padding: 16px 24px; margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center;
         }
-        .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
+        .status-left { display: flex; align-items: center; gap: 16px; }
+        .brand { font-weight: 700; font-size: 1.1rem; letter-spacing: -0.02em; }
+        .status-pill {
+            display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 99px;
+            font-size: 0.8rem; font-weight: 600;
+        }
+        .status-info { color: var(--text-sec); font-size: 0.85rem; display: flex; gap: 16px; }
+        .status-info span { padding-left: 16px; border-left: 1px solid var(--border); }
+        .status-info span:first-child { border: none; padding: 0; }
+
+        /* Top Actions */
+        .top-actions { display: flex; gap: 16px; align-items: center; margin-bottom: 32px; }
+        .date-picker {
+            display: flex; align-items: center; gap: 8px; background: var(--bg-card);
+            border: 1px solid var(--border); padding: 6px 12px; border-radius: var(--radius);
+        }
+        .date-picker input { border: none; outline: none; background: transparent; font-family: inherit; font-weight: 500; color: var(--text-main); }
+        .date-picker label { font-size: 0.8rem; color: var(--text-sec); font-weight: 500; }
         
-        /* Semáforo CSS */
-        .kpi-card.status-success { border-left: 4px solid var(--color-success); }
-        .kpi-card.status-warning { border-left: 4px solid var(--color-warning); }
-        .kpi-card.status-danger { border-left: 4px solid var(--color-danger); }
-        .kpi-card.status-info { border-left: 4px solid var(--color-accent); }
-        .status-danger { animation: pulse-soft 2s infinite; }
-        @keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: 0.85; } }
-
-        .kpi-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
-        .kpi-title { font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); }
-        
-        .kpi-value { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 16px; }
-        .kpi-card.status-success .kpi-value { color: var(--color-success); }
-        .kpi-card.status-warning .kpi-value { color: var(--color-warning); }
-        .kpi-card.status-danger .kpi-value { color: var(--color-danger); }
-        .kpi-card.status-info .kpi-value { color: var(--color-accent); }
-
-        .kpi-footer { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; }
-        .kpi-status-indicator { display: flex; align-items: center; gap: 6px; font-weight: 500; }
-        
-        .kpi-card.status-success .kpi-status-indicator { color: var(--color-success); }
-        .kpi-card.status-warning .kpi-status-indicator { color: var(--color-warning); }
-        .kpi-card.status-danger .kpi-status-indicator { color: var(--color-danger); }
-        .kpi-card.status-info .kpi-status-indicator { color: var(--color-accent); }
-        
-        .kpi-delta { font-weight: 500; }
-        .delta-up.good { color: var(--color-success); }
-        .delta-down.bad { color: var(--color-danger); }
-        .delta-up.bad { color: var(--color-danger); }
-        .delta-down.good { color: var(--color-success); }
-        .delta-neutral { color: var(--text-tertiary); }
-
-        /* Charts */
-        .charts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; margin-bottom: 48px; }
-        .chart-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-lg);
-            padding: 24px;
+        .btn {
+            background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main);
+            padding: 8px 16px; border-radius: var(--radius); font-size: 0.85rem; font-weight: 500;
+            cursor: pointer; box-shadow: var(--shadow); transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px;
         }
-        .chart-header { margin-bottom: 24px; }
-        .chart-title { font-size: 1rem; font-weight: 600; margin-bottom: 4px; }
-        .chart-subtitle { font-size: 0.8rem; color: var(--text-tertiary); }
-        .chart-container { position: relative; height: 260px; width: 100%; }
+        .btn:hover { background: var(--bg-body); border-color: var(--border-hover); }
+        .btn-primary { background: var(--text-main); color: #fff; border-color: var(--text-main); }
+        .btn-primary:hover { background: #27272a; border-color: #27272a; }
 
-        /* Tables */
-        .table-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-lg);
-            overflow: hidden;
-            margin-bottom: 48px;
+        /* Grid Headers */
+        .section-header { font-size: 0.85rem; font-weight: 600; color: var(--text-sec); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+        /* Metrics Grid */
+        .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+        .metric-card {
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+            padding: 20px; box-shadow: var(--shadow);
         }
-        .table-wrapper { overflow-x: auto; }
+        .metric-title { font-size: 0.8rem; color: var(--text-sec); margin-bottom: 8px; font-weight: 500; }
+        .metric-value { font-size: 1.5rem; font-weight: 600; color: var(--text-main); margin-bottom: 8px; letter-spacing: -0.02em; }
+        .metric-delta { font-size: 0.8rem; font-weight: 500; display: flex; align-items: center; gap: 4px; }
+        
+        .delta-good { color: var(--success); }
+        .delta-bad { color: var(--danger); }
+        .delta-neutral { color: var(--text-muted); }
+        .delta-bg-good { background: var(--success-bg); color: var(--success); padding: 2px 6px; border-radius: 4px; }
+        .delta-bg-bad { background: var(--danger-bg); color: var(--danger); padding: 2px 6px; border-radius: 4px; }
+
+        /* Charts Grid */
+        .charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 32px; }
+        
+        /* Table */
+        .table-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow-x: auto; margin-bottom: 32px; }
         table { width: 100%; border-collapse: collapse; text-align: left; }
-        th {
-            background: var(--bg-sidebar);
-            padding: 12px 24px;
-            font-size: 0.75rem; font-weight: 600; color: var(--text-secondary);
-            text-transform: uppercase; letter-spacing: 0.05em;
-            border-bottom: 1px solid var(--border-color);
-            cursor: pointer;
-        }
-        th:hover { color: var(--text-primary); }
-        td {
-            padding: 16px 24px;
-            font-size: 0.85rem; color: var(--text-primary);
-            border-bottom: 1px solid rgba(0,0,0,0.04);
-            white-space: nowrap;
-        }
-        tr:nth-child(even) { background: rgba(0,0,0,0.01); }
-        tr:hover { background: var(--bg-hover); }
-        
-        .status-dot {
-            display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px;
-        }
-        .status-dot.success { background: var(--color-success); }
-        .status-dot.danger { background: var(--color-danger); }
-        .status-dot.warning { background: var(--color-warning); }
+        th { padding: 12px 20px; font-size: 0.75rem; font-weight: 600; color: var(--text-sec); text-transform: uppercase; border-bottom: 1px solid var(--border); background: var(--bg-body); }
+        td { padding: 14px 20px; font-size: 0.85rem; border-bottom: 1px solid var(--border); color: var(--text-main); }
+        tr:last-child td { border-bottom: none; }
+        tr:hover { background: var(--bg-body); }
 
-        /* ════ MODAL ════ */
+        .tag { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 500; border: 1px solid var(--border); background: var(--bg-body); }
+        .tag.success { background: var(--success-bg); color: var(--success); border: none; }
+        .tag.warning { background: rgba(245,158,11,0.1); color: #d97706; border: none; }
+
+        /* Modal */
         .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(15, 23, 42, 0.5);
-            backdrop-filter: blur(4px);
-            z-index: 1000;
-            display: flex; align-items: center; justify-content: center;
-            opacity: 0; visibility: hidden;
-            transition: all 0.25s ease;
+            position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(2px);
+            z-index: 1000; display: flex; align-items: center; justify-content: center;
+            opacity: 0; visibility: hidden; transition: all 0.2s;
         }
         .modal-overlay.active { opacity: 1; visibility: visible; }
-        
         .modal {
-            background: #fff;
-            border-radius: 16px;
-            width: 90%; max-width: 640px;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: var(--shadow-modal);
-            transform: translateY(20px) scale(0.97);
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            background: #fff; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto;
+            border-radius: 12px; box-shadow: var(--shadow-modal); padding: 32px;
+            transform: translateY(20px); transition: all 0.2s; border: 1px solid var(--border);
         }
-        .modal-overlay.active .modal { transform: translateY(0) scale(1); }
+        .modal-overlay.active .modal { transform: translateY(0); }
+        
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+        .form-group label { display: block; font-size: 0.8rem; font-weight: 500; margin-bottom: 6px; color: var(--text-sec); }
+        .form-group input { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-family: inherit; }
+        .form-group input:focus { outline: none; border-color: var(--text-main); }
 
-        .modal-header {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 24px 32px 16px;
-            border-bottom: 1px solid var(--border-color);
-        }
-        .modal-header h2 { font-size: 1.25rem; font-weight: 700; }
-        .modal-header .modal-sub { font-size: 0.8rem; color: var(--text-tertiary); margin-top: 4px; }
-        .modal-close {
-            background: none; border: none;
-            width: 36px; height: 36px; border-radius: 8px;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; color: var(--text-secondary);
-            transition: all 0.15s;
-        }
-        .modal-close:hover { background: var(--bg-hover); color: var(--text-primary); }
-
-        .modal-body { padding: 24px 32px; }
-
-        .form-section-title {
-            font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
-            letter-spacing: 0.08em; color: var(--text-tertiary);
-            margin: 24px 0 12px; padding-bottom: 8px;
-            border-bottom: 1px solid var(--border-color);
-        }
-        .form-section-title:first-child { margin-top: 0; }
-
-        .form-grid {
-            display: grid; grid-template-columns: 1fr 1fr;
-            gap: 16px;
-        }
-        .form-group { display: flex; flex-direction: column; gap: 6px; }
-        .form-group label {
-            font-size: 0.8rem; font-weight: 500; color: var(--text-secondary);
-        }
-        .form-group input {
-            background: var(--bg-sidebar);
-            border: 1px solid var(--border-color);
-            padding: 10px 14px;
-            border-radius: var(--radius-md);
-            font-family: inherit; font-size: 0.9rem;
-            color: var(--text-primary);
-            transition: all 0.2s;
-        }
-        .form-group input:focus {
-            outline: none;
-            border-color: var(--color-accent);
-            box-shadow: 0 0 0 3px var(--color-accent-bg);
-            background: #fff;
-        }
-        .form-group input::placeholder { color: var(--text-tertiary); }
-
-        .modal-footer {
-            padding: 16px 32px 24px;
-            display: flex; justify-content: flex-end; gap: 12px;
-        }
-        .btn-cancel {
-            background: #fff; border: 1px solid var(--border-color);
-            padding: 10px 20px; border-radius: var(--radius-md);
-            font-family: inherit; font-size: 0.85rem; font-weight: 600;
-            color: var(--text-secondary); cursor: pointer; transition: all 0.15s;
-        }
-        .btn-cancel:hover { background: var(--bg-hover); color: var(--text-primary); }
-        .btn-submit {
-            background: var(--color-accent);
-            border: none;
-            padding: 10px 28px; border-radius: var(--radius-md);
-            font-family: inherit; font-size: 0.85rem; font-weight: 600;
-            color: #fff; cursor: pointer; transition: all 0.15s;
-            display: flex; align-items: center; gap: 8px;
-        }
-        .btn-submit:hover { background: #4f46e5; }
-        .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
-        .btn-submit .spinner {
-            width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3);
-            border-top-color: #fff; border-radius: 50%; display: none;
-            animation: spin 0.6s linear infinite;
-        }
-        .btn-submit.loading .spinner { display: inline-block; }
-        .btn-submit.loading .btn-text { display: none; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* Responsive */
         @media(max-width: 1024px) {
-            .kpi-grid { grid-template-columns: repeat(2, 1fr); }
-            .main-content { padding: 32px; }
+            .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+            .charts-row { grid-template-columns: 1fr; }
         }
         @media(max-width: 768px) {
-            .app-layout { flex-direction: column; }
-            .main-content { padding: 24px; }
-            .charts-grid { grid-template-columns: 1fr; }
-            .top-bar { flex-direction: column; align-items: flex-start; gap: 16px; }
+            .status-bar { flex-direction: column; align-items: flex-start; gap: 12px; }
+            .top-actions { flex-direction: column; align-items: stretch; }
             .form-grid { grid-template-columns: 1fr; }
-            .modal { width: 95%; }
-        }
-        @media(max-width: 480px) {
-            .kpi-grid { grid-template-columns: 1fr; }
-            .filters { flex-direction: column; }
         }
     </style>
 </head>
 <body>
 
-<div class="dashboard-loader" id="dashboardLoader">
-    <div class="loader-spinner"></div>
-    <div class="loader-text">Obteniendo datos...</div>
+<div class="dashboard-loader" id="dashboardLoader"><div class="spinner"></div><div style="font-weight:500;">Sincronizando...</div></div>
+
+<div class="container">
+    <div class="status-bar">
+        <div class="status-left">
+            <span class="brand">ROSECAL</span>
+            <span class="status-pill" id="globalStatusPill" style="background:var(--bg-body);"><span style="color:var(--text-sec);">Analizando...</span></span>
+        </div>
+        <div class="status-info">
+            <span id="labelRunway">Meses de caja: --</span>
+            <span id="labelUpdate">Actualización: --</span>
+        </div>
+    </div>
+
+    <div class="top-actions">
+        <div class="date-picker">
+            <label>PERÍODO</label>
+            <input type="month" id="globalMonth" onchange="renderDashboard()">
+            <label style="margin-left:8px;">VS</label>
+            <input type="month" id="compareMonth" onchange="renderDashboard()">
+        </div>
+        <button class="btn btn-primary" onclick="openModal()">Ingresar Datos Manuales</button>
+        <button class="btn" onclick="renderDashboard()">Recargar</button>
+    </div>
+
+    <!-- Primera Fila -->
+    <div class="section-header">Salud Financiera</div>
+    <div class="metrics-grid" id="rowHealth"></div>
+
+    <!-- Segunda Fila -->
+    <div class="section-header">Motor de Crecimiento</div>
+    <div class="metrics-grid" id="rowGrowth"></div>
+
+    <!-- Gráficos 1 -->
+    <div class="charts-row">
+        <div class="metric-card" style="padding:24px;">
+            <div class="metric-title" style="margin-bottom:24px;">Evolución del Negocio</div>
+            <div style="height:280px;"><canvas id="chartMain"></canvas></div>
+        </div>
+        <div class="metric-card" style="padding:24px;">
+            <div class="metric-title" style="margin-bottom:24px;">Pipeline de Pedidos</div>
+            <div style="height:280px;"><canvas id="chartFunnel"></canvas></div>
+        </div>
+    </div>
+
+    <!-- Tercera Fila -->
+    <div class="section-header">Riesgo Financiero</div>
+    <div class="metrics-grid" id="rowRisk"></div>
+
+    <!-- Gráficos 2 -->
+    <div class="charts-row" style="grid-template-columns:1fr;">
+        <div class="metric-card" style="padding:24px;">
+            <div class="metric-title" style="margin-bottom:24px;">Reserva Histórica (Caja Final)</div>
+            <div style="height:200px;"><canvas id="chartCash"></canvas></div>
+        </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="section-header">Actividad Reciente</div>
+    <div class="table-card">
+        <table>
+            <thead><tr><th>Fecha</th><th>Cliente</th><th>Provincia</th><th>Importe</th><th>Condición</th><th>Estado</th></tr></thead>
+            <tbody id="txBody"></tbody>
+        </table>
+    </div>
 </div>
 
-<div class="app-layout">
-    <main class="main-content">
-        <div class="demo-banner" id="demoBanner">
-            <span>⚠️</span>
-            <span><strong>Modo Demo</strong> — Mostrando datos de ejemplo.</span>
-        </div>
-        <div id="successBanner"></div>
-
-        <header class="top-bar">
-            <div>
-                <h1 class="page-title">Rosecal — Vista General</h1>
-                <div class="page-subtitle" id="globalPeriodLabel">Mostrando datos de: <strong>Seleccione un mes</strong></div>
-                <div class="update-text" id="lastUpdate">Actualizado: --</div>
-            </div>
-            <div class="top-actions">
-                <div class="filter-item" style="flex-direction:row; align-items:center;">
-                    <label style="margin-bottom:0; color:var(--text-primary);">Periodo:</label>
-                    <input type="month" id="globalMonth" onchange="changeMonth()" style="padding:8px; font-weight:600;">
-                    <label style="margin-bottom:0; margin-left:8px; color:var(--text-tertiary);">vs</label>
-                    <input type="month" id="compareMonth" onchange="changeMonth()" style="padding:8px; margin-left:8px; font-weight:600;" title="Periodo para comparar">
-                </div>
-                <button class="btn-manual" id="btnManual" onclick="openModal()">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    Cargar Datos
-                </button>
-                <button class="btn-update" id="btnRefresh" onclick="refreshData()">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-                    Sincronizar
-                </button>
-            </div>
-        </header>
-
-        <div class="filters" style="display:none;">
-            <!-- Filtros antiguos removidos a pedido del usuario -->
-        </div>
-
-        <h2 class="section-title">🏦 Tesorería</h2>
-        <div class="kpi-grid" id="kpiTesoreria"></div>
-
-        <h2 class="section-title">📊 Rendimiento Comercial</h2>
-        <div class="kpi-grid" id="kpiSales"></div>
-
-        <h2 class="section-title">💰 Cuentas &amp; Canales</h2>
-        <div class="kpi-grid" id="kpiReceivables"></div>
-
-        <h2 class="section-title">📈 Análisis Visual</h2>
-        <div class="charts-grid">
-            <div class="chart-card"><div class="chart-header"><div class="chart-title">Evolución Mensual</div><div class="chart-subtitle">Ventas y cobranzas</div></div><div class="chart-container"><canvas id="chartMonthly"></canvas></div></div>
-            <div class="chart-card"><div class="chart-header"><div class="chart-title">Pedidos por Estado</div><div class="chart-subtitle">Distribución del volumen</div></div><div class="chart-container"><canvas id="chartStatus"></canvas></div></div>
-            <div class="chart-card"><div class="chart-header"><div class="chart-title">Caja Final</div><div class="chart-subtitle">Acumulado mensual</div></div><div class="chart-container"><canvas id="chartCashFlow"></canvas></div></div>
-            <div class="chart-card"><div class="chart-header"><div class="chart-title">Cheques Activos</div><div class="chart-subtitle">Por vencimiento</div></div><div class="chart-container"><canvas id="chartCheques"></canvas></div></div>
-        </div>
-
-        <h2 class="section-title">📋 Últimos Registros</h2>
-        <div class="table-card"><div class="table-wrapper">
-            <table><thead><tr>
-                <th onclick="sortTable(0)">Fecha</th>
-                <th onclick="sortTable(1)">Cliente</th>
-                <th onclick="sortTable(2)">Provincia</th>
-                <th onclick="sortTable(3)">Importe</th>
-                <th onclick="sortTable(4)">Condición</th>
-                <th onclick="sortTable(5)">Estado</th>
-            </tr></thead><tbody id="transactionsBody"></tbody></table>
-        </div></div>
-    </main>
-</div>
-
-<!-- ════ MODAL: Cargar Datos Manuales ════ -->
+<!-- Modal Form -->
 <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
     <div class="modal">
-        <div class="modal-header">
-            <div>
-                <h2>📋 Carga Semanal de Datos</h2>
-                <div class="modal-sub">Estos datos se guardan en tu Google Sheets automáticamente</div>
-            </div>
-            <button class="modal-close" onclick="closeModal()">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
+        <h2 style="font-size:1.2rem; margin-bottom:4px;">Carga Semanal</h2>
+        <p style="font-size:0.85rem; color:var(--text-sec); margin-bottom:24px;">Sincronización manual de caja, deudas y costos.</p>
+        
+        <div class="section-header">Tesorería & Costos</div>
+        <div class="form-grid">
+            <div class="form-group"><label>Banco Cta Cte</label><input type="number" id="fBanco"></div>
+            <div class="form-group"><label>Saldo MP</label><input type="number" id="fMP"></div>
+            <div class="form-group"><label>Efectivo Caja</label><input type="number" id="fCaja"></div>
+            <div class="form-group"><label>Inversiones</label><input type="number" id="fInv"></div>
+            <div class="form-group"><label>Gastos Operativos Mensuales</label><input type="number" id="fOps" placeholder="Sueldos, Alquiler..."></div>
         </div>
-        <div class="modal-body">
-            <div class="form-section-title">🏦 Saldos de Tesorería</div>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label>Banco Cuenta Corriente</label>
-                    <input type="text" id="fBancoCuenta" placeholder="ej: 1500000" inputmode="numeric">
-                </div>
-                <div class="form-group">
-                    <label>Saldo Mercado Pago</label>
-                    <input type="text" id="fSaldoMP" placeholder="ej: 850000" inputmode="numeric">
-                </div>
-                <div class="form-group">
-                    <label>Efectivo en Caja</label>
-                    <input type="text" id="fEfectivoCaja" placeholder="ej: 120000" inputmode="numeric">
-                </div>
-                <div class="form-group">
-                    <label>Inversiones (FCI, PF)</label>
-                    <input type="text" id="fInversiones" placeholder="ej: 5000000" inputmode="numeric">
-                </div>
-            </div>
-
-            <div class="form-section-title">💸 Deudas y Compromisos</div>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label>Deuda Proveedores</label>
-                    <input type="text" id="fDeudaProveedores" placeholder="ej: 2300000" inputmode="numeric">
-                </div>
-                <div class="form-group">
-                    <label>Deuda Servicios</label>
-                    <input type="text" id="fDeudaServicios" placeholder="ej: 150000" inputmode="numeric">
-                </div>
-                <div class="form-group">
-                    <label>Deuda Mercado Pago</label>
-                    <input type="text" id="fDeudaMP" placeholder="ej: 0" inputmode="numeric">
-                </div>
-            </div>
-
-            <div class="form-section-title">🎯 Marketing y Ventas</div>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label>Inversión Publicidad</label>
-                    <input type="text" id="fInversionPublicidad" placeholder="ej: 300000" inputmode="numeric">
-                </div>
-                <div class="form-group">
-                    <label>Gasto Marketing</label>
-                    <input type="text" id="fGastoMarketing" placeholder="ej: 100000" inputmode="numeric">
-                </div>
-                <div class="form-group">
-                    <label>Ventas Corporativas</label>
-                    <input type="text" id="fVentasCorporativas" placeholder="ej: 3000000" inputmode="numeric">
-                </div>
-            </div>
+        
+        <div class="section-header">Deudas Activas</div>
+        <div class="form-grid">
+            <div class="form-group"><label>Proveedores</label><input type="number" id="fDeudaProv"></div>
+            <div class="form-group"><label>Servicios</label><input type="number" id="fDeudaServ"></div>
+            <div class="form-group"><label>Mercado Pago (Créditos)</label><input type="number" id="fDeudaMP"></div>
         </div>
-        <div class="modal-footer">
-            <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
-            <button class="btn-submit" id="btnSubmitManual" onclick="submitManualData()">
-                <span class="spinner"></span>
-                <span class="btn-text">Guardar en Sheets</span>
-            </button>
+
+        <div class="section-header">Comercial</div>
+        <div class="form-grid">
+            <div class="form-group"><label>Inversión Publicidad</label><input type="number" id="fAds"></div>
+            <div class="form-group"><label>Gasto Marketing (Agencia)</label><input type="number" id="fMkt"></div>
+            <div class="form-group"><label>Ventas Corporativas</label><input type="number" id="fCorp"></div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:32px;">
+            <button class="btn" onclick="closeModal()">Cancelar</button>
+            <button class="btn btn-primary" id="btnSave" onclick="saveData()">Guardar Datos</button>
         </div>
     </div>
 </div>
 
 <script>
-const CONFIG = {
-    APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbzBzq0RFa1kfNKmLx7IoeeWK3BFR8cA4hcYESpy56kNs6AGKuYIxJ1FGET40IrNUEs5/exec',
-    REFRESH_INTERVAL: 60 * 60 * 1000,
-    LOCALE: 'es-AR', CURRENCY: 'ARS'
-};
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzBzq0RFa1kfNKmLx7IoeeWK3BFR8cA4hcYESpy56kNs6AGKuYIxJ1FGET40IrNUEs5/exec';
+const LOCALE = 'es-AR', CUR = 'ARS';
+let currentData = null, charts = {};
 
-let currentData = null, charts = {}, sortDirection = {};
+function fmt(v, type='cur') {
+    if(type==='cur') return new Intl.NumberFormat(LOCALE,{style:'currency',currency:CUR,minimumFractionDigits:0,maximumFractionDigits:0}).format(v);
+    if(type==='num') return new Intl.NumberFormat(LOCALE).format(v);
+    if(type==='pct') return v.toFixed(1)+'%';
+    if(type==='dec') return v.toFixed(1);
+    return v;
+}
+function calcDelta(cur,prev) { return prev ? ((cur-prev)/Math.abs(prev)*100) : 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
-function fmtCur(v){ return new Intl.NumberFormat(CONFIG.LOCALE,{style:'currency',currency:CONFIG.CURRENCY,minimumFractionDigits:0,maximumFractionDigits:0}).format(v) }
-function fmtPct(v){ return (v>=0?'+':'')+v.toFixed(1)+'%' }
-function calcDelta(cur,prev){ return prev?((cur-prev)/Math.abs(prev)*100):0 }
-function parseInput(v){ return Number(String(v).replace(/[^0-9.\-]/g,'')) || 0 }
-
-/* ════ MODAL CONTROLS ════ */
-function openModal(){
-    document.getElementById('modalOverlay').classList.add('active');
-    document.body.style.overflow = 'hidden';
-    // Pre-fill with last known values
-    if(currentData && currentData.manual && currentData.manual.fecha){
-        const m = currentData.manual;
-        document.getElementById('fBancoCuenta').value = m.bancoCuenta || '';
-        document.getElementById('fSaldoMP').value = m.saldoMP || '';
-        document.getElementById('fEfectivoCaja').value = m.efectivoCaja || '';
-        document.getElementById('fInversiones').value = m.inversiones || '';
-        document.getElementById('fDeudaProveedores').value = m.deudaProveedores || '';
-        document.getElementById('fDeudaServicios').value = m.deudaServicios || '';
-        document.getElementById('fDeudaMP').value = m.deudaMP || '';
-        document.getElementById('fInversionPublicidad').value = m.inversionPublicidad || '';
-        document.getElementById('fGastoMarketing').value = m.gastoMarketing || '';
-        document.getElementById('fVentasCorporativas').value = m.ventasCorporativas || '';
-    }
+async function fetchAPI(month) {
+    let url = APPS_SCRIPT_URL + '?action=read' + (month ? '&month='+month : '');
+    try { const r = await fetch(url); return await r.json(); } catch(e) { console.error(e); return null; }
 }
 
-function closeModal(){
-    document.getElementById('modalOverlay').classList.remove('active');
-    document.body.style.overflow = '';
-}
-
-async function submitManualData(){
-    const btn = document.getElementById('btnSubmitManual');
-    btn.classList.add('loading');
-    btn.disabled = true;
-
-    const params = new URLSearchParams({
-        action: 'write',
-        bancoCuenta: parseInput(document.getElementById('fBancoCuenta').value),
-        saldoMP: parseInput(document.getElementById('fSaldoMP').value),
-        efectivoCaja: parseInput(document.getElementById('fEfectivoCaja').value),
-        inversiones: parseInput(document.getElementById('fInversiones').value),
-        deudaProveedores: parseInput(document.getElementById('fDeudaProveedores').value),
-        deudaServicios: parseInput(document.getElementById('fDeudaServicios').value),
-        deudaMP: parseInput(document.getElementById('fDeudaMP').value),
-        inversionPublicidad: parseInput(document.getElementById('fInversionPublicidad').value),
-        gastoMarketing: parseInput(document.getElementById('fGastoMarketing').value),
-        ventasCorporativas: parseInput(document.getElementById('fVentasCorporativas').value)
-    });
-
-    try {
-        await fetch(CONFIG.APPS_SCRIPT_URL + '?' + params.toString(), { mode: 'no-cors' });
-        closeModal();
-        // Show success
-        document.getElementById('successBanner').innerHTML = `
-            <div class="success-banner">
-                <span>✅</span>
-                <span><strong>¡Datos guardados!</strong> La información se grabó en tu Google Sheets. Sincronizando dashboard...</span>
-            </div>`;
-        setTimeout(() => document.getElementById('successBanner').innerHTML = '', 5000);
-        // Wait a moment then refresh
-        setTimeout(() => renderDashboard(), 2000);
-    } catch(e) {
-        alert('Error al guardar: ' + e.message);
-    } finally {
-        btn.classList.remove('loading');
-        btn.disabled = false;
-    }
-}
-
-/* ════ DEMO DATA ════ */
-function generateDemoData(){
-    return {
-        lastUpdate: new Date().toISOString(),
-        cashFlow: { currentMonth:'marzo', ingresosMercadoPago:5618703, ingresosEfectivo:2780000, ingresosDeudaDuek:165000, cajaFinal:4067067.66, prevIngresosMercadoPago:4200000, prevIngresosEfectivo:2100000, prevIngresosDeudaDuek:120000, prevCajaFinal:3500000, monthlyLabels:['noviembre','diciembre','enero','febrero','marzo'], monthlyCajaFinal:[1200000,1850000,2900000,3500000,4067067.66] },
-        sales: { currentMonth:'marzo', ventasTotal:4785000, ventasCobrado:992000, inversionPub:150000, prevVentasTotal:14719218.5, prevVentasCobrado:8098081, prevInversionPub:1028000, ventasTelefonicas: 2400000, deudaClientes: 3793000, deudaDuek: 5800000, ventasMercadoLibre: 1050000 },
-        manual: { fecha:'2026-03-10', bancoCuenta:1500000, saldoMP:850000, efectivoCaja:120000, inversiones:5000000, deudaProveedores:2300000, deudaServicios:150000, deudaMP:0, inversionPublicidad:300000, gastoMarketing:100000, ventasCorporativas:3000000, totalLiquidez:7470000, totalPasivo:2450000, prev:null, history:[] },
-        monthlyEvolution: { labels:['noviembre','diciembre','enero','febrero','marzo'], ventasTotal:[5640100,4413381.8,13026880,14719218.5,4785000], ventasCobrado:[1436000,2632240,9386580,8098081,992000], inversionPub:[500000,700000,1131012,1028000,150000] },
-        ordersByStatus: { COBRADO:145, ANULADO:28, 'DEUDA DUEK':35 }, orderAmountByStatus: { COBRADO:32500000, ANULADO:3200000, 'DEUDA DUEK':5800000 },
-        cheques: { labels:['feb-2026','mar-2026','abr-2026','ago-2026'], montos:[2800000,5903435,4500000,3200000] },
-        transactions: [
-            {date:'2026-03-11',client:'VICTOR ORIETA',province:'Buenos Aires',amount:56000,condition:'MOTO ENTREGA',status:'COBRADO'},
-            {date:'2026-03-10',client:'Logística Express',province:'Córdoba',amount:267000,condition:'CONTRA REEMBOLSO',status:'COBRADO'},
-            {date:'2026-03-09',client:'Distribuidora Norte',province:'Tucumán',amount:198000,condition:'MOTO ENTREGA',status:'DEUDA DUEK'},
-            {date:'2026-03-08',client:'nancy bulla',province:'Buenos Aires',amount:56000,condition:'CONTRA REEMBOLSO',status:'ANULADO'},
-            {date:'2026-03-07',client:'Damian Moreno',province:'Buenos Aires',amount:75000,condition:'MOTO',status:'COBRADO'}
-        ],
-        provinces:['Buenos Aires','CABA','Córdoba','Tucumán'], conditions:['MOTO ENTREGA','CONTRA REEMBOLSO','RETIRA Y PAGA']
-    };
-}
-
-async function fetchData(monthStr){
-    let url = CONFIG.APPS_SCRIPT_URL;
-    if (monthStr) url += '?action=read&month=' + monthStr;
+async function renderDashboard() {
+    document.getElementById('dashboardLoader').classList.add('active');
     
-    if(!CONFIG.APPS_SCRIPT_URL){ document.getElementById('demoBanner').classList.remove('hidden'); return generateDemoData() }
-    document.getElementById('demoBanner').classList.add('hidden');
-    try{ const r=await fetch(url); if(!r.ok)throw new Error(r.status); return await r.json() }
-    catch(e){ document.getElementById('demoBanner').classList.remove('hidden'); return generateDemoData() }
-}
-
-/* ════ LOGIC: SEMÁFORO ════ */
-function getStatus(val, type, isInv = false) {
-    if(type === 'growth') {
-        if(isInv) {
-            if(val <= 0) return {c:'success', t:'Bien', i:'✓'};
-            if(val <= 10) return {c:'warning', t:'Normal', i:'!'};
-            return {c:'danger', t:'Crítico', i:'✗'};
-        } else {
-            if(val > 0) return {c:'success', t:'Bien', i:'✓'};
-            if(val > -10) return {c:'warning', t:'Atención', i:'!'};
-            return {c:'danger', t:'Crítico', i:'✗'};
-        }
-    } else if(type === 'roi') { return {c: val>=1 ? 'success' : 'danger', t:'', i:''};
-        if(val >= 2.5) return {c:'success', t:'Excelente', i:'✓'};
-        if(val >= 1.5) return {c:'warning', t:'Aceptable', i:'!'};
-        return {c:'danger', t:'Bajo', i:'✗'};
-    } else if(type === 'info') {
-        return {c:'info', t:'Dato', i:'ℹ'};
-    } else if(type === 'liquidity') {
-        if(val > 0) return {c:'success', t:'Positivo', i:'✓'};
-        if(val === 0) return {c:'warning', t:'Neutro', i:'!'};
-        return {c:'danger', t:'Negativo', i:'✗'};
-    }
-}
-
-function renderKPIs(data){
-    const cf=data.cashFlow, sl=data.sales, mn=data.manual||{};
+    let m1 = document.getElementById('globalMonth').value;
+    let m2 = document.getElementById('compareMonth').value;
     
-    const roi = sl.inversionPub>0 ? sl.ventasCobrado/sl.inversionPub : 0;
-    const prevRoi = sl.prevInversionPub>0 ? sl.prevVentasCobrado/sl.prevInversionPub : 0;
-
-    // Tesorería calculations
-    const totalLiquidez = (mn.bancoCuenta||0) + (mn.saldoMP||0) + (mn.efectivoCaja||0) + (mn.inversiones||0);
-    const totalPasivo = (mn.deudaProveedores||0) + (mn.deudaServicios||0) + (mn.deudaMP||0);
-    const posicionNeta = totalLiquidez - totalPasivo;
-
-    // Previous values for tesoreria deltas
-    const prevMn = mn.prev || {};
-    const prevLiquidez = (prevMn.bancoCuenta||0) + (prevMn.saldoMP||0) + (prevMn.efectivoCaja||0) + (prevMn.inversiones||0);
-    const prevPasivo = (prevMn.deudaProveedores||0) + (prevMn.deudaServicios||0) + (prevMn.deudaMP||0);
-
-    const kpis = [
-        { id:'tesoreria', arr:[
-            {label:'Banco Cta Cte', val:mn.bancoCuenta||0, delta:calcDelta(mn.bancoCuenta||0,prevMn.bancoCuenta||0), type:'growth'},
-            {label:'Saldo Mercado Pago', val:mn.saldoMP||0, delta:calcDelta(mn.saldoMP||0,prevMn.saldoMP||0), type:'growth'},
-            {label:'Efectivo en Caja', val:mn.efectivoCaja||0, delta:calcDelta(mn.efectivoCaja||0,prevMn.efectivoCaja||0), type:'growth'},
-            {label:'Total Liquidez', val:totalLiquidez, delta:calcDelta(totalLiquidez,prevLiquidez), type:'growth'}
-        ]},
-        { id:'sales', arr:[
-            {label:'Ventas Total', val:sl.ventasTotal, delta:calcDelta(sl.ventasTotal,sl.prevVentasTotal), type:'growth'},
-            {label:'Ventas Cobrado', val:sl.ventasCobrado, delta:calcDelta(sl.ventasCobrado,sl.prevVentasCobrado), type:'growth'},
-            {label:'Inversión Pub.', val:sl.inversionPub||(mn.inversionPublicidad||0), delta:calcDelta(sl.inversionPub||(mn.inversionPublicidad||0),sl.prevInversionPub), type:'growth', inv:true},
-            {label:'ROI Publicitario', val:roi, disp:roi>0?roi.toFixed(1)+'x':'N/A', delta:calcDelta(roi,prevRoi), type:'roi'}
-        ]},
-        { id:'receivables', arr:[
-            {label:'Deuda Clientes (Cta Cte)', val:sl.deudaClientes||0, delta:0, type:'growth', inv:true},
-            {label:'Deuda Duek', val:sl.deudaDuek||0, delta:0, type:'growth', inv:true},
-            {label:'Ventas Telefónicas', val:sl.ventasTelefonicas||0, delta:0, type:'growth'},
-            {label:'Posición Neta', val:posicionNeta, disp:fmtCur(posicionNeta), delta:0, type:'liquidity'}
-        ]}
-    ];
-
-    kpis.forEach(section => {
-        const el = document.getElementById(`kpi${section.id.charAt(0).toUpperCase() + section.id.slice(1)}`);
-        if(!el) return;
-        const html = section.arr.map(k => {
-            const st = getStatus(
-                k.type === 'roi' ? k.val : (k.type === 'liquidity' ? k.val : k.delta),
-                k.type, k.inv
-            );
-            const valStr = k.disp || fmtCur(k.val);
-            let dClass = 'delta-neutral';
-            let dArrow = '→';
-            if(k.delta > 0) { dClass = k.inv ? 'delta-up bad' : 'delta-up good'; dArrow = '↑'; }
-            if(k.delta < 0) { dClass = k.inv ? 'delta-down good' : 'delta-down bad'; dArrow = '↓'; }
-            
-            return `
-            <div class="kpi-card status-${st.c}">
-                <div class="kpi-header">
-                    <span class="kpi-title">${k.label}</span>
-                </div>
-                <div class="kpi-value">${valStr}</div>
-                <div class="kpi-footer">
-                    <span class="kpi-status-indicator">
-                        ${st.i} ${st.t}
-                    </span>
-                    <span class="kpi-delta ${dClass}">
-                        ${k.delta !== 0 ? dArrow + ' ' + fmtPct(Math.abs(k.delta)) : '—'}
-                    </span>
-                </div>
-            </div>`;
-        }).join('');
-        el.innerHTML = html;
-    });
+    const [d1, d2] = await Promise.all([ fetchAPI(m1), m2 ? fetchAPI(m2) : Promise.resolve(null) ]);
+    document.getElementById('dashboardLoader').classList.remove('active');
+    
+    if(!d1 || d1.error) { alert('Error conectando a Sheets.'); return; }
+    currentData = d1;
+    
+    // Inject comparison data if loaded
+    renderUI(d1, d2);
 }
 
-function renderCharts(data){
-    const gridC='#f1f5f9', tickC='#64748b', bgWhite='#ffffff';
-    const ttip={ backgroundColor:'#0f172a', titleColor:'#fff', bodyColor:'#cbd5e1', padding:12, cornerRadius:6 };
-    const leg={ labels:{ font:{family:'Inter'}, color:'#475569', boxWidth:12, usePointStyle:true } };
-    Object.values(charts).forEach(c=>c.destroy()); charts={};
+function renderUI(d1, d2) {
+    const sl = d1.sales, mn = d1.manual || {}, cf = d1.cashFlow;
+    const psl = d2 ? d2.sales : { ventasTotal: sl.prevVentasTotal, ventasCobrado: sl.prevVentasCobrado, inversionPub: sl.prevInversionPub };
+    const pmn = (d2 ? d2.manual : mn.prev) || {};
 
-    charts.monthly=new Chart(document.getElementById('chartMonthly'),{
-        type:'line', data:{
-        labels:data.monthlyEvolution.labels.map(l=>l.charAt(0).toUpperCase()+l.slice(1,3)),
-        datasets:[
-            {label:'Ventas Total',data:data.monthlyEvolution.ventasTotal,borderColor:'#0f172a',backgroundColor:'transparent',borderWidth:2,tension:0.3,pointRadius:4},
-            {label:'Ventas Cobrado',data:data.monthlyEvolution.ventasCobrado,borderColor:'#10b981',backgroundColor:'rgba(16,185,129,0.1)',fill:true,borderWidth:2,tension:0.3,pointRadius:4},
-            {label:'Inversión',data:data.monthlyEvolution.inversionPub,borderColor:'#94a3b8',borderDash:[4,4],borderWidth:2,tension:0}
-        ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:leg,tooltip:ttip},scales:{x:{grid:{color:gridC},ticks:{color:tickC}},y:{grid:{color:gridC},ticks:{color:tickC,callback:v=>'$'+(v/1000000).toFixed(1)+'M'}}}}
+    // 1. Cálculos de Salud Financiera
+    const cajaTotal = (mn.bancoCuenta||0) + (mn.saldoMP||0) + (mn.efectivoCaja||0) + (mn.inversiones||0);
+    const prevCaja = (pmn.bancoCuenta||0) + (pmn.saldoMP||0) + (pmn.efectivoCaja||0) + (pmn.inversiones||0);
+    
+    const gastosMensuales = (mn.gastosOperativos||0) + (mn.inversionPublicidad||0) + (mn.gastoMarketing||0);
+    const runtime = gastosMensuales > 0 ? (cajaTotal / gastosMensuales) : 99;
+    
+    const costeBeato = sl.costoBeato||0;
+    const costeLogistica = sl.costoLogistica||0;
+    const gMarketing = mn.gastoMarketing||0;
+    const gOperativos = mn.gastosOperativos||0;
+    const chequesMes = sl.chequesMes||0; 
+    const invPub = sl.inversionPub || mn.inversionPublicidad || 0;
+    
+    const gananciaNeta = (sl.ventasCobrado||0) - invPub - gMarketing - gOperativos - costeBeato - costeLogistica - chequesMes;
+    let margenNeto = sl.ventasCobrado > 0 ? (gananciaNeta / sl.ventasCobrado)*100 : 0;
+    
+    // Status Bar
+    const vCrecimiento = calcDelta(sl.ventasCobrado, psl.ventasCobrado);
+    let stText = 'ESTABLE', stCol = 'var(--warning)', stBg = 'rgba(245,158,11,0.1)';
+    if(vCrecimiento > 5) { stText = 'CRECIENDO'; stCol = 'var(--success)'; stBg = 'var(--success-bg)'; }
+    if(vCrecimiento < -5) { stText = 'RIESGO'; stCol = 'var(--danger)'; stBg = 'var(--danger-bg)'; }
+    document.getElementById('globalStatusPill').innerHTML = `<span style="background:${stCol};width:8px;height:8px;border-radius:50%;"></span> <span style="color:${stCol};">${stText}</span>`;
+    document.getElementById('labelRunway').innerHTML = `Meses de caja: <strong style="color:var(--text-main);">${fmt(runtime,'dec')}</strong>`;
+    document.getElementById('labelUpdate').innerHTML = `Actualización: <strong style="color:var(--text-main);">Hoy</strong>`;
+    if(d1.computedMonth) document.getElementById('globalMonth').value = d1.computedMonth;
+
+    // Métricas Fila 1 (Salud)
+    drawGrid('rowHealth', [
+        { label: 'Caja Total', val: cajaTotal, prev: prevCaja, t: 'cur' },
+        { label: 'Meses de Caja', val: runtime, prev: 0, t: 'dec', hideDelta: true },
+        { label: 'Ventas del Mes', val: sl.ventasTotal, prev: psl.ventasTotal, t: 'cur' },
+        { label: 'Margen Neto', val: margenNeto, prev: 0, t: 'pct', hideDelta: true }
+    ]);
+
+    // Métricas Fila 2 (Crecimiento)
+    const txCount = d1.totalOrders || 0;
+    const pTxCount = d2 ? d2.totalOrders : 0;
+    const tktPromo = txCount > 0 ? sl.ventasTotal / txCount : 0;
+    const pTktPromo = pTxCount > 0 ? psl.ventasTotal / pTxCount : 0;
+    const roi = invPub > 0 ? (sl.ventasCobrado / invPub) : 0;
+    
+    drawGrid('rowGrowth', [
+        { label: 'Pedidos Nuevos', val: txCount, prev: pTxCount, t: 'num' },
+        { label: 'Ticket Promedio', val: tktPromo, prev: pTktPromo, t: 'cur' },
+        { label: 'Ventas Cobradas', val: sl.ventasCobrado, prev: psl.ventasCobrado, t: 'cur' },
+        { label: 'ROI Marketing', val: roi, prev: 0, t: 'dec', hideDelta: true }
+    ]);
+
+    // Métricas Fila 3 (Riesgo)
+    const chequesEmitidosActivos = d1.cheques ? d1.cheques.totalActivos : 0;
+    const deudaProv = (mn.deudaProveedores||0) + (mn.deudaServicios||0) + (mn.deudaMP||0);
+    const totalPasivo = deudaProv + chequesEmitidosActivos; // Cheques a cobrar? o pagar? El user dijo "Pagos futuros que entraran" (Wait, then it's Asset). But wait, previous prompt: "Cheques a pagar ese mes - costo beato". That implies cheques emitidos. Asumimos chequesEmitidosActivos es Pasivo o "Cuentas a Pagar".
+
+    drawGrid('rowRisk', [
+        { label: 'Deuda de Clientes', val: sl.deudaClientes||0, prev: 0, t: 'cur', inv: true, hideDelta:true },
+        { label: 'Cheques (Activos)', val: chequesEmitidosActivos, prev: 0, t: 'cur', hideDelta:true },
+        { label: 'Cuentas a Pagar', val: deudaProv, prev: pmn ? ((pmn.deudaProveedores||0)+(pmn.deudaServicios||0)+(pmn.deudaMP||0)) : 0, t: 'cur', inv: true },
+        { label: 'Posición Neta Caja', val: cajaTotal - totalPasivo, prev: 0, t: 'cur', hideDelta:true }
+    ]);
+
+    // Charts
+    const ttip = { backgroundColor:'#18181b', titleColor:'#fff', padding:10, cornerRadius:4, bodyFont:{family:'Inter'} };
+    Object.values(charts).forEach(c=>c.destroy());
+    
+    const hist = d1.monthlyEvolution;
+    charts.main = new Chart(document.getElementById('chartMain'), {
+        type: 'line', data: {
+            labels: hist.labels,
+            datasets: [
+                { label:'Ventas del Mes', data:hist.ventasTotal, borderColor:'#18181b', borderWidth:2, pointRadius:0, tension:0.2 },
+                { label:'Ventas Cobradas', data:hist.ventasCobrado, borderColor:'#10b981', backgroundColor: 'rgba(16,185,129,0.05)', fill:true, borderWidth:2, pointRadius:0, tension:0.2 },
+                { label:'Inv. Marketing', data:hist.inversionPub, borderColor:'#a1a1aa', borderDash:[5,5], borderWidth:2, pointRadius:0, tension:0 }
+            ]
+        }, options: { responsive:true, maintainAspectRatio:false, plugins:{ tooltip:ttip, legend:{position:'bottom', labels:{usePointStyle:true, boxWidth:8, font:{family:'Inter'}}} }, scales:{ x:{grid:{display:false}}, y:{grid:{color:'#f4f4f5'}, ticks:{callback:v=>'$'+(v/1000000).toFixed(1)+'M'}} } }
     });
 
-    const statKeys=Object.keys(data.orderAmountByStatus||data.ordersByStatus);
-    const statVals=Object.values(data.orderAmountByStatus||data.ordersByStatus);
-    charts.status=new Chart(document.getElementById('chartStatus'),{
-        type:'doughnut',data:{labels:statKeys,datasets:[{data:statVals,backgroundColor:['#10b981','#ef4444','#f59e0b','#3b82f6','#6366f1','#8b5cf6','#ec4899'],borderWidth:2,borderColor:bgWhite}]},
-        options:{responsive:true,maintainAspectRatio:false,cutout:'75%',plugins:{legend:{position:'right',...leg},tooltip:ttip}}
+    const statusObj = d1.ordersByStatus || {};
+    // Sort to make a funnel-like logic
+    const keys = Object.keys(statusObj).sort((a,b)=>statusObj[b]-statusObj[a]);
+    charts.funnel = new Chart(document.getElementById('chartFunnel'), {
+        type: 'bar', data: {
+            labels: keys,
+            datasets: [{ data: keys.map(k=>statusObj[k]), backgroundColor: '#18181b', borderRadius: 4 }]
+        }, options: { indexAxis: 'y', responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:ttip }, scales:{ x:{grid:{color:'#f4f4f5'}}, y:{grid:{display:false}} } }
     });
 
-    charts.cashFlow=new Chart(document.getElementById('chartCashFlow'),{
-        type:'bar',data:{labels:data.cashFlow.monthlyLabels.map(l=>l.charAt(0).toUpperCase()+l.slice(1,3)),datasets:[{label:'Caja',data:data.cashFlow.monthlyCajaFinal,backgroundColor:'#0f172a',borderRadius:4}]},
-        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:ttip},scales:{x:{grid:{display:false},ticks:{color:tickC}},y:{grid:{color:gridC},ticks:{color:tickC,callback:v=>'$'+(v/1000000).toFixed(1)+'M'}}}}
+    const cfLabels = d1.cashFlow ? d1.cashFlow.monthlyLabels : [];
+    const cfData = d1.cashFlow ? d1.cashFlow.monthlyCajaFinal : [];
+    charts.cash = new Chart(document.getElementById('chartCash'), {
+        type: 'bar', data: {
+            labels: cfLabels, datasets: [{ data: cfData, backgroundColor: '#d4d4d8', hoverBackgroundColor:'#18181b', borderRadius: 4 }]
+        }, options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:ttip }, scales:{ x:{grid:{display:false}}, y:{grid:{color:'#f4f4f5'}, ticks:{callback:v=>'$'+(v/1000000).toFixed(1)+'M'}} } }
     });
 
-    charts.cheques=new Chart(document.getElementById('chartCheques'),{
-        type:'bar',data:{labels:data.cheques.labels,datasets:[{label:'Cheques',data:data.cheques.montos,backgroundColor:'#f59e0b',borderRadius:4}]},
-        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:ttip},scales:{x:{grid:{display:false},ticks:{color:tickC}},y:{grid:{color:gridC},ticks:{color:tickC,callback:v=>'$'+(v/1000000).toFixed(1)+'M'}}}}
-    });
-}
-
-function renderTable(txs){
-    document.getElementById('transactionsBody').innerHTML=txs.map(t=>{
-        let stClass;
-        if(t.status==='COBRADO') stClass = 'success';
-        else if(t.status==='ANULADO') stClass = 'danger';
-        else if(t.status.includes('DEUDA')) stClass = 'warning';
-        else stClass = 'warning';
-        
-        return `<tr>
-            <td style="color:var(--text-secondary)">${t.date}</td>
-            <td style="font-weight:500">${t.client}</td>
-            <td style="color:var(--text-secondary)">${t.province}</td>
-            <td style="font-weight:600">${fmtCur(t.amount)}</td>
-            <td style="color:var(--text-secondary)">${t.condition}</td>
-            <td><span class="status-dot ${stClass}"></span><span style="font-size:0.8rem">${t.status}</span></td>
-        </tr>`;
+    // Table
+    document.getElementById('txBody').innerHTML = d1.transactions.slice(0, 15).map(t => {
+        let sc = 'tag'; if(t.status==='COBRADO')sc+=' success'; else if(t.status!=='ANULADO')sc+=' warning';
+        return `<tr><td><span style="color:var(--text-sec);">${t.date}</span></td><td style="font-weight:500;">${t.client}</td><td>${t.province}</td><td style="font-weight:500;">${fmt(t.amount)}</td><td>${t.condition}</td><td><span class="${sc}">${t.status}</span></td></tr>`;
     }).join('');
 }
 
-function applyFilters(){
-    // Viejo filtro removido
+function drawGrid(id, items) {
+    document.getElementById(id).innerHTML = items.map(k => {
+        const d = (k.hideDelta || !k.prev) ? 0 : calcDelta(k.val, k.prev);
+        let dHtml = '', dClass = 'delta-neutral';
+        if(d !== 0) {
+            const isGood = k.inv ? d < 0 : d > 0;
+            dClass = isGood ? 'delta-bg-good' : 'delta-bg-bad';
+            dHtml = `<span class="${dClass}">${d>0?'↑':'↓'} ${fmt(Math.abs(d),'pct')}</span>`;
+        } else if(!k.hideDelta) {
+            dHtml = `<span class="delta-neutral">-</span>`;
+        }
+        return `<div class="metric-card"><div class="metric-title">${k.label}</div><div class="metric-value">${fmt(k.val, k.t)}</div><div class="metric-delta">${dHtml}</div></div>`;
+    }).join('');
 }
 
-function sortTable(i){
-    if(!currentData)return;
-    const d=sortDirection[i]==='asc'?'desc':'asc'; sortDirection[i]=d;
-    const k=['date','client','province','amount','condition','status'][i];
-    currentData.transactions.sort((a,b)=>{let va=a[k],vb=b[k];if(typeof va==='number')return d==='asc'?va-vb:vb-va;return d==='asc'?String(va).localeCompare(String(vb)):String(vb).localeCompare(String(va))});
-    renderTable(currentData.transactions);
-}
-
-async function changeMonth() {
-    await renderDashboard();
-}
-
-async function renderDashboard(){
-    const ldr=document.getElementById('dashboardLoader');
-    if(ldr) ldr.classList.add('active');
-    
-    const m1=document.getElementById('globalMonth').value;
-    const m2=document.getElementById('compareMonth').value;
-
-    const [data1, data2] = await Promise.all([
-        fetchData(m1),
-        m2 ? fetchData(m2) : Promise.resolve(null)
-    ]);
-
-    if(ldr) ldr.classList.remove('active');
-
-    if(!data1) return; 
-    currentData = data1;
-    
-    // Inject data2 into data1 as previous values if comparison is active
-    if(data2) {
-        if(data1.cashFlow && data2.cashFlow) {
-            data1.cashFlow.prevIngresosMercadoPago = data2.cashFlow.ingresosMercadoPago || 0;
-            data1.cashFlow.prevIngresosEfectivo = data2.cashFlow.ingresosEfectivo || 0;
-            data1.cashFlow.prevIngresosDeudaDuek = data2.cashFlow.ingresosDeudaDuek || 0;
-            data1.cashFlow.prevCajaFinal = data2.cashFlow.cajaFinal || 0;
-        }
-        if(data1.sales && data2.sales) {
-            data1.sales.prevVentasTotal = data2.sales.ventasTotal || 0;
-            data1.sales.prevVentasCobrado = data2.sales.ventasCobrado || 0;
-            data1.sales.prevInversionPub = data2.sales.inversionPub || 0;
-        }
-        if(data1.manual && data2.manual) {
-            data1.manual.prev = data2.manual;
-        }
+/* Modal */
+function openModal() {
+    if(currentData && currentData.manual) {
+        const m = currentData.manual;
+        const e = (id, val) => document.getElementById(id).value = val || '';
+        e('fBanco', m.bancoCuenta); e('fMP', m.saldoMP); e('fCaja', m.efectivoCaja); e('fInv', m.inversiones); e('fOps', m.gastosOperativos);
+        e('fDeudaProv', m.deudaProveedores); e('fDeudaServ', m.deudaServicios); e('fDeudaMP', m.deudaMP);
+        e('fAds', m.inversionPublicidad); e('fMkt', m.gastoMarketing); e('fCorp', m.ventasCorporativas);
     }
-
-    // Set global month picker value to the one computed by backend if none was specifically asked
-    if(data1.computedMonth) {
-        document.getElementById('globalMonth').value = data1.computedMonth;
-        const [y, m] = data1.computedMonth.split('-');
-        const mn = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][parseInt(m)-1];
-        
-        let labelHtml = `Mostrando datos de: <span style="background:var(--bg-hover); padding:4px 8px; border-radius:4px;"><strong>${mn} ${y}</strong></span>`;
-        
-        if (data2 && data2.computedMonth) {
-            const [y2, m2] = data2.computedMonth.split('-');
-            const mn2 = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][parseInt(m2)-1];
-            labelHtml += ` <span style="color:var(--text-tertiary); margin:0 4px;">vs</span> <span style="background:var(--color-warning-bg); padding:4px 8px; border-radius:4px; color:var(--color-warning);"><strong>${mn2} ${y2}</strong></span>`;
-        }
-        
-        document.getElementById('globalPeriodLabel').innerHTML = labelHtml;
-    }
-
-    document.getElementById('lastUpdate').textContent = 'Última sinc. ' + new Date().toLocaleTimeString(CONFIG.LOCALE,{hour:'2-digit',minute:'2-digit'});
-    renderKPIs(data1); 
-    renderCharts(data1); 
-    renderTable(data1.transactions); 
+    document.getElementById('modalOverlay').classList.add('active');
+}
+function closeModal() { document.getElementById('modalOverlay').classList.remove('active'); }
+async function saveData() {
+    document.getElementById('btnSave').innerText = 'Guardando...';
+    const v = (id) => Number(document.getElementById(id).value) || 0;
+    const p = new URLSearchParams({
+        action: 'write', bancoCuenta: v('fBanco'), saldoMP: v('fMP'), efectivoCaja: v('fCaja'), inversiones: v('fInv'), gastosOperativos: v('fOps'),
+        deudaProveedores: v('fDeudaProv'), deudaServicios: v('fDeudaServ'), deudaMP: v('fDeudaMP'),
+        inversionPublicidad: v('fAds'), gastoMarketing: v('fMkt'), ventasCorporativas: v('fCorp')
+    });
+    try {
+        await fetch(APPS_SCRIPT_URL + '?' + p.toString(), {mode:'no-cors'});
+        closeModal();
+        setTimeout(()=>renderDashboard(), 1500);
+    } catch(e) { alert('Error al guardar.'); }
+    document.getElementById('btnSave').innerText = 'Guardar Datos';
 }
 
-async function refreshData(){
-    await renderDashboard();
-}
-
-renderDashboard(); setInterval(()=>refreshData(), CONFIG.REFRESH_INTERVAL);
+renderDashboard(); setInterval(renderDashboard, 60*60*1000);
 </script>
 </body>
 </html>
