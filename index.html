@@ -324,21 +324,14 @@ function coreLogic(d1, d2, m1) {
     const chequesEmitidosActivos = d1.totalChequesActivos || 0;
     
     // Calcular deuda clientes distribuida y porcentaje si está disponible
-    const currentDeudaClientes = sl.deudaClientes||0;
+    const currentDeudaClientes = glob.totalDeuda||0;
     const activos = cajaActual + currentDeudaClientes;
     const pasivos = deudasProv + chequesEmitidosActivos;
     const posNeta = activos - pasivos;
 
-    let pctMoto = 0, pctReembolso = 0;
-    const deudaGlo = glob.totalDeuda || 0;
-    if(deudaGlo > 0) {
-        pctMoto = (glob.deudaMoto / deudaGlo) * 100;
-        pctReembolso = (glob.deudaContraReembolso / deudaGlo) * 100;
-    }
-
     drawGrid('rowRisk', [
         { label: 'Deuda Clientes', val: currentDeudaClientes, prev: 0, t: 'cur', inv: true, hideDelta:true, 
-          info: { desc:'Dinero que tienen los clientes o cadeterías aún no ingresado al status COBRADO.', calc:`Contra Reembolso global estimado rep.: ~${fmt(pctReembolso,'dec')}%<br>Moto Mensajería estimado rep.: ~${fmt(pctMoto,'dec')}%<br>Total acumulado activo: ${fmt(currentDeudaClientes)}`} },
+          info: { desc:'Dinero en la calle de los que no fueron ni cobrados ni anulados.', calc:`Calculado sumando toda la columna histórico que no esté en status COBRADO ni ANULADO.<br>Total: ${fmt(currentDeudaClientes)}`} },
         { label: 'Cheques Emitidos', val: chequesEmitidosActivos, prev: 0, t: 'cur', inv: true, hideDelta:true,
           info: { desc:'Total de pasivos diferidos.', calc:`Cheques (ACTIVO/VENCIDO): ${fmt(chequesEmitidosActivos)}`} },
         { label: 'Posición Neta (Liquidez)', val: posNeta, prev: 0, t: 'cur', hideDelta:true,
@@ -418,11 +411,19 @@ function coreLogic(d1, d2, m1) {
     const tktPromo = curStats.validOrders > 0 ? (curStats.brutas / curStats.validOrders) : 0;
     const ptktPromo = prevStats.validOrders > 0 ? (prevStats.brutas / prevStats.validOrders) : 0;
     
-    let ratioCobrado = 0, ratioStyle = '';
+    let pctCobrado = 0, pctNo = 0;
     if(curStats.validOrders > 0) {
-        ratioCobrado = (curStats.pNoCobrados / curStats.validOrders) * 100;
-        ratioStyle = (curStats.pNoCobrados > curStats.pCobrados) ? '<span style="color:var(--danger)">Mayoría Pendiente ('+fmt(ratioCobrado,'dec')+'%)</span>' : '<span style="color:var(--success)">Sano Control Pendientes ('+fmt(ratioCobrado,'dec')+'%)</span>';
+        pctCobrado = (curStats.pCobrados / curStats.validOrders) * 100;
+        pctNo = 100 - pctCobrado;
     }
+    
+    const pieHtml = `<div style="display:flex; align-items:center; gap:12px;">
+        <div style="width:36px; height:36px; border-radius:50%; background:conic-gradient(var(--success) ${pctCobrado}%, var(--danger) 0); flex-shrink:0;"></div>
+        <div style="display:flex; flex-direction:column; font-size:0.8rem; line-height:1.2;">
+            <span style="color:var(--success); font-weight:700;">${pctCobrado.toFixed(0)}% COBRADO</span>
+            <span style="color:var(--danger); font-weight:700;">${pctNo.toFixed(0)}% PENDIENTE</span>
+        </div>
+    </div>`;
 
     drawGrid('rowGrowth', [
         { label: 'Ventas del Mes (Brutas)', val: curStats.brutas, prev: prevStats.brutas, t: 'cur',
@@ -431,8 +432,8 @@ function coreLogic(d1, d2, m1) {
           info: { desc:'Unidades operadas válidas', calc:`Total MTD: ${fmt(curStats.validOrders,'num')} pedidos.`} },
         { label: 'Ticket Promedio', val: tktPromo, prev: ptktPromo, t: 'cur',
           info: { desc:'Facturación / Cantidad válida', calc:`Facturacion: ${fmt(curStats.brutas)} / Pedidos: ${fmt(curStats.validOrders,'num')}<hr/>Ticket = ${fmt(tktPromo)}`} },
-        { label: 'Volumen: Cobrado / No Cobrado', val: curStats.pCobrados, prev: 0, t: 'num', hideDelta:true,
-          info: { desc:'Relación de pedios terminados vs pendientes.', calc:`Cobrados: ${fmt(curStats.pCobrados,'num')}<br>En proceso o deuda: ${fmt(curStats.pNoCobrados,'num')}<hr/>${ratioStyle}`} },
+        { label: 'Volumen: Estados', val: pieHtml, prev: 0, t: 'raw', hideDelta:true,
+          info: { desc:'Relación porcentual de terminados vs no pagados.', calc:`Cobrados: ${fmt(curStats.pCobrados,'num')}<br>Deudas o Varios: ${fmt(curStats.pNoCobrados,'num')}`} },
         { label: 'Pedidos Anulados', val: curStats.anulados, prev: prevStats.anulados, t: 'num', inv: true,
           info: { desc:'Volumen de cancelaciones.', calc:`Mismos anulados a esta misma fecha limitados a MTD.`} }
     ], 'repeat(5, 1fr)'); // overrides 4 columns to fit 5
@@ -476,9 +477,11 @@ function drawGrid(id, items, colsRule=null) {
         
         let iconHtml = k.info ? `<svg onclick="openInfoMetric(${idx}, '${id}')" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="cursor:pointer; color:var(--text-muted);"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>` : '';
         
+        let valOutput = k.t === 'raw' ? k.val : (k.t==='num'&&k.label.includes('Cobrado /') ? k.val : fmt(k.val, k.t));
+        
         return `<div class="metric-card">
             <div class="metric-title">${k.label} ${iconHtml}</div>
-            <div class="metric-value">${k.t==='num'&&k.label.includes('Cobrado /') ? k.val : fmt(k.val, k.t)}</div>
+            <div class="metric-value">${valOutput}</div>
             <div class="metric-delta">${dHtml} <div style="margin-left:auto; font-size:0.75rem;">${k.info && k.info.calc.includes('Mayoría Pendiente') ? '<span style="color:var(--danger)">CRÍTICO</span>' : ''}</div></div>
         </div>`;
     }).join('');

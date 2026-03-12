@@ -168,41 +168,45 @@ var gasBackend = {
     },
 
     readOrders: function(ss, targetDate) {
-        var sheet = ss.getSheetByName('Respuestas de formulario 1');
-        if (!sheet) return { current: [], global: { totalBruto: 0, totalCobrado: 0, porMes: {}, deudaContraReembolso: 0, deudaMoto: 0, totalDeuda: 0 } };
+        var sheet = ss.getSheetByName('Calculo Ganancias');
+        if (!sheet) return { current: [], global: { totalBruto: 0, totalCobrado: 0, porMes: {}, totalDeuda: 0 } };
         var data = sheet.getDataRange().getValues();
-        if (data.length < 2) return { current: [], global: { totalBruto: 0, totalCobrado: 0, porMes: {}, deudaContraReembolso: 0, deudaMoto: 0, totalDeuda: 0 } };
+        if (data.length < 2) return { current: [], global: { totalBruto: 0, totalCobrado: 0, porMes: {}, totalDeuda: 0 } };
         var h = data[0].map(function(k){ return String(k).trim().toLowerCase() });
         
         var ci = {
             fecha: this.findCol(h, 'marca temporal'),
-            cliente: this.findCol(h, 'nombre del cliente') >= 0 ? this.findCol(h, 'nombre del cliente') : this.findCol(h, 'cliente'),
-            importe: this.findCol(h, 'importe'),
-            condicion: this.findCol(h, 'condici'),
-            status: this.findCol(h, 'status')
+            importe: this.findCol(h, 'importe factur', 'importe original', 'importe'),
+            status: this.findCol(h, 'status del', 'status')
         };
+        // Fallbacks directos si cambian los nombres en base a la foto compartida
+        if (ci.fecha < 0) ci.fecha = 0;
+        if (ci.importe < 0) ci.importe = 1;
+        if (ci.status < 0) ci.status = 2;
 
         var targetYMonth = targetDate.getFullYear() + '-' + this.padZero(targetDate.getMonth() + 1);
         var orders = [];
-        var glob = { totalBruto: 0, totalCobrado: 0, porMes: {}, deudaContraReembolso: 0, deudaMoto: 0, totalDeuda: 0 };
+        var glob = { totalBruto: 0, totalCobrado: 0, porMes: {}, totalDeuda: 0 };
         
         for (var i = 1; i < data.length; i++) {
             var r = data[i];
-            if (!r[ci.fecha >= 0 ? ci.fecha : 0]) continue;
+            if (!r[ci.fecha]) continue;
             
-            var rawDate = r[ci.fecha >= 0 ? ci.fecha : 0];
+            var rawDate = r[ci.fecha];
             var tsFull = "";
             if (rawDate instanceof Date) { tsFull = rawDate.toISOString(); }
-            else { tsFull = new Date(rawDate).toISOString(); }
+            else { 
+                var parsed = new Date(rawDate);
+                if (!isNaN(parsed.getTime())) tsFull = parsed.toISOString(); 
+            }
             if(!tsFull) continue;
             
             var yMonth = tsFull.substring(0, 7);
             
-            var imp = this.parseAmount(r[ci.importe >= 0 ? ci.importe : 0]);
+            var imp = this.parseAmount(r[ci.importe]);
             if (imp <= 0) continue;
 
-            var st = String(r[ci.status >= 0 ? ci.status : 14] || '').toUpperCase();
-            var cond = String(r[ci.condicion >= 0 ? ci.condicion : 12] || '').toUpperCase();
+            var st = String(r[ci.status] || '').trim().toUpperCase();
             
             if (st !== 'ANULADO') {
                 glob.totalBruto += imp;
@@ -214,8 +218,6 @@ var gasBackend = {
                     glob.porMes[yMonth].cobrado += imp;
                 } else {
                     glob.totalDeuda += imp;
-                    if (cond.indexOf('REEMBOLSO') >= 0) glob.deudaContraReembolso += imp;
-                    else if (cond.indexOf('MOTO') >= 0 || cond.indexOf('MENSAJERIA') >= 0 || cond.indexOf('ENVI') >= 0) glob.deudaMoto += imp;
                 }
             }
             
@@ -223,8 +225,7 @@ var gasBackend = {
                 orders.push({
                     date: tsFull,
                     amount: imp,
-                    status: st,
-                    condicion: cond
+                    status: st
                 });
             }
         }
