@@ -115,6 +115,29 @@
         }
         @keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 
+        /* Loader Overlay */
+        .dashboard-loader {
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            background: rgba(255,255,255,0.7);
+            backdrop-filter: blur(4px);
+            z-index: 2000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            opacity: 0; visibility: hidden;
+            transition: all 0.2s ease;
+        }
+        .dashboard-loader.active {
+            opacity: 1; visibility: visible;
+        }
+        .loader-spinner {
+            width: 48px; height: 48px; border: 4px solid var(--border-color);
+            border-top-color: var(--color-accent); border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 16px;
+        }
+        .loader-text {
+            font-size: 1.1rem; font-weight: 600; color: var(--text-primary);
+        }
+
         /* Filters */
         .filters {
             display: flex; gap: 16px; flex-wrap: wrap;
@@ -353,6 +376,11 @@
 </head>
 <body>
 
+<div class="dashboard-loader" id="dashboardLoader">
+    <div class="loader-spinner"></div>
+    <div class="loader-text">Obteniendo datos...</div>
+</div>
+
 <div class="app-layout">
     <main class="main-content">
         <div class="demo-banner" id="demoBanner">
@@ -371,6 +399,8 @@
                 <div class="filter-item" style="flex-direction:row; align-items:center;">
                     <label style="margin-bottom:0; color:var(--text-primary);">Periodo:</label>
                     <input type="month" id="globalMonth" onchange="changeMonth()" style="padding:8px; font-weight:600;">
+                    <label style="margin-bottom:0; margin-left:8px; color:var(--text-tertiary);">vs</label>
+                    <input type="month" id="compareMonth" onchange="changeMonth()" style="padding:8px; margin-left:8px; font-weight:600;" title="Periodo para comparar">
                 </div>
                 <button class="btn-manual" id="btnManual" onclick="openModal()">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -764,31 +794,69 @@ function sortTable(i){
 }
 
 async function changeMonth() {
-    await renderDashboard(document.getElementById('globalMonth').value);
+    await renderDashboard();
 }
 
-async function renderDashboard(monthStr){
-    const data = await fetchData(monthStr); 
-    if(!data) return; 
-    currentData = data;
+async function renderDashboard(){
+    const ldr=document.getElementById('dashboardLoader');
+    if(ldr) ldr.classList.add('active');
     
+    const m1=document.getElementById('globalMonth').value;
+    const m2=document.getElementById('compareMonth').value;
+
+    const [data1, data2] = await Promise.all([
+        fetchData(m1),
+        m2 ? fetchData(m2) : Promise.resolve(null)
+    ]);
+
+    if(ldr) ldr.classList.remove('active');
+
+    if(!data1) return; 
+    currentData = data1;
+    
+    // Inject data2 into data1 as previous values if comparison is active
+    if(data2) {
+        if(data1.cashFlow && data2.cashFlow) {
+            data1.cashFlow.prevIngresosMercadoPago = data2.cashFlow.ingresosMercadoPago || 0;
+            data1.cashFlow.prevIngresosEfectivo = data2.cashFlow.ingresosEfectivo || 0;
+            data1.cashFlow.prevIngresosDeudaDuek = data2.cashFlow.ingresosDeudaDuek || 0;
+            data1.cashFlow.prevCajaFinal = data2.cashFlow.cajaFinal || 0;
+        }
+        if(data1.sales && data2.sales) {
+            data1.sales.prevVentasTotal = data2.sales.ventasTotal || 0;
+            data1.sales.prevVentasCobrado = data2.sales.ventasCobrado || 0;
+            data1.sales.prevInversionPub = data2.sales.inversionPub || 0;
+        }
+        if(data1.manual && data2.manual) {
+            data1.manual.prev = data2.manual;
+        }
+    }
+
     // Set global month picker value to the one computed by backend if none was specifically asked
-    if(data.computedMonth) {
-        document.getElementById('globalMonth').value = data.computedMonth;
-        const [y, m] = data.computedMonth.split('-');
+    if(data1.computedMonth) {
+        document.getElementById('globalMonth').value = data1.computedMonth;
+        const [y, m] = data1.computedMonth.split('-');
         const mn = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][parseInt(m)-1];
-        document.getElementById('globalPeriodLabel').innerHTML = `Mostrando datos de: <strong>${mn} ${y}</strong>`;
+        
+        let labelHtml = `Mostrando datos de: <span style="background:var(--bg-hover); padding:4px 8px; border-radius:4px;"><strong>${mn} ${y}</strong></span>`;
+        
+        if (data2 && data2.computedMonth) {
+            const [y2, m2] = data2.computedMonth.split('-');
+            const mn2 = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][parseInt(m2)-1];
+            labelHtml += ` <span style="color:var(--text-tertiary); margin:0 4px;">vs</span> <span style="background:var(--color-warning-bg); padding:4px 8px; border-radius:4px; color:var(--color-warning);"><strong>${mn2} ${y2}</strong></span>`;
+        }
+        
+        document.getElementById('globalPeriodLabel').innerHTML = labelHtml;
     }
 
     document.getElementById('lastUpdate').textContent = 'Última sinc. ' + new Date().toLocaleTimeString(CONFIG.LOCALE,{hour:'2-digit',minute:'2-digit'});
-    renderKPIs(data); 
-    renderCharts(data); 
-    renderTable(data.transactions); 
+    renderKPIs(data1); 
+    renderCharts(data1); 
+    renderTable(data1.transactions); 
 }
 
 async function refreshData(){
-    const val = document.getElementById('globalMonth').value;
-    await renderDashboard(val);
+    await renderDashboard();
 }
 
 renderDashboard(); setInterval(()=>refreshData(), CONFIG.REFRESH_INTERVAL);
