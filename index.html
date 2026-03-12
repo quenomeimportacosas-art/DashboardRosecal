@@ -21,14 +21,17 @@
             --color-success: #10b981;
             --color-warning: #f59e0b;
             --color-danger: #ef4444;
+            --color-accent: #6366f1;
             --color-success-bg: rgba(16,185,129,0.1);
             --color-warning-bg: rgba(245,158,11,0.1);
             --color-danger-bg: rgba(239,68,68,0.1);
+            --color-accent-bg: rgba(99,102,241,0.08);
 
             --radius-md: 8px;
             --radius-lg: 12px;
             --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
             --shadow-card: 0 4px 12px rgba(0,0,0,0.03);
+            --shadow-modal: 0 24px 48px rgba(0,0,0,0.16);
         }
         
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -62,9 +65,9 @@
         }
         .page-title { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 8px; }
         .page-subtitle { color: var(--text-secondary); font-size: 0.9rem; }
-        .top-actions { display: flex; align-items: center; gap: 16px; }
+        .top-actions { display: flex; align-items: center; gap: 12px; }
         .update-text { font-size: 0.8rem; color: var(--text-tertiary); }
-        .btn-update {
+        .btn-update, .btn-manual {
             background: #fff;
             border: 1px solid var(--border-color);
             padding: 8px 16px;
@@ -77,7 +80,13 @@
             transition: all 0.2s;
             display: flex; align-items: center; gap: 8px;
         }
-        .btn-update:hover { background: var(--bg-hover); }
+        .btn-update:hover, .btn-manual:hover { background: var(--bg-hover); }
+        .btn-manual {
+            background: var(--color-accent);
+            color: #fff;
+            border-color: var(--color-accent);
+        }
+        .btn-manual:hover { background: #4f46e5; }
 
         /* Demo Banner */
         .demo-banner {
@@ -91,6 +100,20 @@
             display: flex; align-items: center; gap: 12px;
         }
         .demo-banner.hidden { display: none; }
+
+        /* Success Banner */
+        .success-banner {
+            background: var(--color-success-bg);
+            border: 1px solid rgba(16,185,129,0.2);
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
+            margin-bottom: 32px;
+            font-size: 0.85rem;
+            color: #065f46;
+            display: flex; align-items: center; gap: 12px;
+            animation: slideDown 0.3s ease;
+        }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 
         /* Filters */
         .filters {
@@ -128,6 +151,7 @@
         .kpi-card.status-success { border-left: 4px solid var(--color-success); }
         .kpi-card.status-warning { border-left: 4px solid var(--color-warning); }
         .kpi-card.status-danger { border-left: 4px solid var(--color-danger); }
+        .kpi-card.status-info { border-left: 4px solid var(--color-accent); }
         .status-danger { animation: pulse-soft 2s infinite; }
         @keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: 0.85; } }
 
@@ -135,10 +159,10 @@
         .kpi-title { font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); }
         
         .kpi-value { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 16px; }
-        .kpi-card.status-success .kpi-value { color: var(--text-primary); } /* Keep neutral or green based on preference. Notion uses neutral mostly, but colored is requested. Let's use primary color but add color to the text if requested */
         .kpi-card.status-success .kpi-value { color: var(--color-success); }
         .kpi-card.status-warning .kpi-value { color: var(--color-warning); }
         .kpi-card.status-danger .kpi-value { color: var(--color-danger); }
+        .kpi-card.status-info .kpi-value { color: var(--color-accent); }
 
         .kpi-footer { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; }
         .kpi-status-indicator { display: flex; align-items: center; gap: 6px; font-weight: 500; }
@@ -146,6 +170,7 @@
         .kpi-card.status-success .kpi-status-indicator { color: var(--color-success); }
         .kpi-card.status-warning .kpi-status-indicator { color: var(--color-warning); }
         .kpi-card.status-danger .kpi-status-indicator { color: var(--color-danger); }
+        .kpi-card.status-info .kpi-status-indicator { color: var(--color-accent); }
         
         .kpi-delta { font-weight: 500; }
         .delta-up.good { color: var(--color-success); }
@@ -202,6 +227,111 @@
         .status-dot.danger { background: var(--color-danger); }
         .status-dot.warning { background: var(--color-warning); }
 
+        /* ════ MODAL ════ */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; visibility: hidden;
+            transition: all 0.25s ease;
+        }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        
+        .modal {
+            background: #fff;
+            border-radius: 16px;
+            width: 90%; max-width: 640px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-modal);
+            transform: translateY(20px) scale(0.97);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .modal-overlay.active .modal { transform: translateY(0) scale(1); }
+
+        .modal-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 24px 32px 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .modal-header h2 { font-size: 1.25rem; font-weight: 700; }
+        .modal-header .modal-sub { font-size: 0.8rem; color: var(--text-tertiary); margin-top: 4px; }
+        .modal-close {
+            background: none; border: none;
+            width: 36px; height: 36px; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; color: var(--text-secondary);
+            transition: all 0.15s;
+        }
+        .modal-close:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+        .modal-body { padding: 24px 32px; }
+
+        .form-section-title {
+            font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.08em; color: var(--text-tertiary);
+            margin: 24px 0 12px; padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .form-section-title:first-child { margin-top: 0; }
+
+        .form-grid {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group label {
+            font-size: 0.8rem; font-weight: 500; color: var(--text-secondary);
+        }
+        .form-group input {
+            background: var(--bg-sidebar);
+            border: 1px solid var(--border-color);
+            padding: 10px 14px;
+            border-radius: var(--radius-md);
+            font-family: inherit; font-size: 0.9rem;
+            color: var(--text-primary);
+            transition: all 0.2s;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--color-accent);
+            box-shadow: 0 0 0 3px var(--color-accent-bg);
+            background: #fff;
+        }
+        .form-group input::placeholder { color: var(--text-tertiary); }
+
+        .modal-footer {
+            padding: 16px 32px 24px;
+            display: flex; justify-content: flex-end; gap: 12px;
+        }
+        .btn-cancel {
+            background: #fff; border: 1px solid var(--border-color);
+            padding: 10px 20px; border-radius: var(--radius-md);
+            font-family: inherit; font-size: 0.85rem; font-weight: 600;
+            color: var(--text-secondary); cursor: pointer; transition: all 0.15s;
+        }
+        .btn-cancel:hover { background: var(--bg-hover); color: var(--text-primary); }
+        .btn-submit {
+            background: var(--color-accent);
+            border: none;
+            padding: 10px 28px; border-radius: var(--radius-md);
+            font-family: inherit; font-size: 0.85rem; font-weight: 600;
+            color: #fff; cursor: pointer; transition: all 0.15s;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .btn-submit:hover { background: #4f46e5; }
+        .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-submit .spinner {
+            width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: #fff; border-radius: 50%; display: none;
+            animation: spin 0.6s linear infinite;
+        }
+        .btn-submit.loading .spinner { display: inline-block; }
+        .btn-submit.loading .btn-text { display: none; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
         /* Responsive */
         @media(max-width: 1024px) {
             .kpi-grid { grid-template-columns: repeat(2, 1fr); }
@@ -212,6 +342,8 @@
             .main-content { padding: 24px; }
             .charts-grid { grid-template-columns: 1fr; }
             .top-bar { flex-direction: column; align-items: flex-start; gap: 16px; }
+            .form-grid { grid-template-columns: 1fr; }
+            .modal { width: 95%; }
         }
         @media(max-width: 480px) {
             .kpi-grid { grid-template-columns: 1fr; }
@@ -227,6 +359,7 @@
             <span>⚠️</span>
             <span><strong>Modo Demo</strong> — Mostrando datos de ejemplo.</span>
         </div>
+        <div id="successBanner"></div>
 
         <header class="top-bar">
             <div>
@@ -235,6 +368,10 @@
             </div>
             <div class="top-actions">
                 <span class="update-text" id="lastUpdate">Actualizado: --</span>
+                <button class="btn-manual" id="btnManual" onclick="openModal()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Cargar Datos
+                </button>
                 <button class="btn-update" id="btnRefresh" onclick="refreshData()">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
                     Sincronizar
@@ -262,13 +399,16 @@
             </div>
         </div>
 
-        <h2 class="section-title">Flujo de Caja</h2>
-        <div class="kpi-grid" id="kpiCash"></div>
+        <h2 class="section-title">🏦 Tesorería</h2>
+        <div class="kpi-grid" id="kpiTesoreria"></div>
 
-        <h2 class="section-title">Rendimiento Comercial</h2>
+        <h2 class="section-title">📊 Rendimiento Comercial</h2>
         <div class="kpi-grid" id="kpiSales"></div>
 
-        <h2 class="section-title">Análisis Visual</h2>
+        <h2 class="section-title">💰 Cuentas &amp; Canales</h2>
+        <div class="kpi-grid" id="kpiReceivables"></div>
+
+        <h2 class="section-title">📈 Análisis Visual</h2>
         <div class="charts-grid">
             <div class="chart-card"><div class="chart-header"><div class="chart-title">Evolución Mensual</div><div class="chart-subtitle">Ventas y cobranzas</div></div><div class="chart-container"><canvas id="chartMonthly"></canvas></div></div>
             <div class="chart-card"><div class="chart-header"><div class="chart-title">Pedidos por Estado</div><div class="chart-subtitle">Distribución del volumen</div></div><div class="chart-container"><canvas id="chartStatus"></canvas></div></div>
@@ -276,7 +416,7 @@
             <div class="chart-card"><div class="chart-header"><div class="chart-title">Cheques Activos</div><div class="chart-subtitle">Por vencimiento</div></div><div class="chart-container"><canvas id="chartCheques"></canvas></div></div>
         </div>
 
-        <h2 class="section-title">Últimos Registros</h2>
+        <h2 class="section-title">📋 Últimos Registros</h2>
         <div class="table-card"><div class="table-wrapper">
             <table><thead><tr>
                 <th onclick="sortTable(0)">Fecha</th>
@@ -290,9 +430,84 @@
     </main>
 </div>
 
+<!-- ════ MODAL: Cargar Datos Manuales ════ -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+        <div class="modal-header">
+            <div>
+                <h2>📋 Carga Semanal de Datos</h2>
+                <div class="modal-sub">Estos datos se guardan en tu Google Sheets automáticamente</div>
+            </div>
+            <button class="modal-close" onclick="closeModal()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="form-section-title">🏦 Saldos de Tesorería</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Banco Cuenta Corriente</label>
+                    <input type="text" id="fBancoCuenta" placeholder="ej: 1500000" inputmode="numeric">
+                </div>
+                <div class="form-group">
+                    <label>Saldo Mercado Pago</label>
+                    <input type="text" id="fSaldoMP" placeholder="ej: 850000" inputmode="numeric">
+                </div>
+                <div class="form-group">
+                    <label>Efectivo en Caja</label>
+                    <input type="text" id="fEfectivoCaja" placeholder="ej: 120000" inputmode="numeric">
+                </div>
+                <div class="form-group">
+                    <label>Inversiones (FCI, PF)</label>
+                    <input type="text" id="fInversiones" placeholder="ej: 5000000" inputmode="numeric">
+                </div>
+            </div>
+
+            <div class="form-section-title">💸 Deudas y Compromisos</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Deuda Proveedores</label>
+                    <input type="text" id="fDeudaProveedores" placeholder="ej: 2300000" inputmode="numeric">
+                </div>
+                <div class="form-group">
+                    <label>Deuda Servicios</label>
+                    <input type="text" id="fDeudaServicios" placeholder="ej: 150000" inputmode="numeric">
+                </div>
+                <div class="form-group">
+                    <label>Deuda Mercado Pago</label>
+                    <input type="text" id="fDeudaMP" placeholder="ej: 0" inputmode="numeric">
+                </div>
+            </div>
+
+            <div class="form-section-title">🎯 Marketing y Ventas</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Inversión Publicidad</label>
+                    <input type="text" id="fInversionPublicidad" placeholder="ej: 300000" inputmode="numeric">
+                </div>
+                <div class="form-group">
+                    <label>Gasto Marketing</label>
+                    <input type="text" id="fGastoMarketing" placeholder="ej: 100000" inputmode="numeric">
+                </div>
+                <div class="form-group">
+                    <label>Ventas Corporativas</label>
+                    <input type="text" id="fVentasCorporativas" placeholder="ej: 3000000" inputmode="numeric">
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+            <button class="btn-submit" id="btnSubmitManual" onclick="submitManualData()">
+                <span class="spinner"></span>
+                <span class="btn-text">Guardar en Sheets</span>
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
 const CONFIG = {
-    APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbxk1pN_PuNWVlxjEa5PPXkhr8292R7O4p2-qrsYJc0L5_Nl8FbxaYVNH_l-cOkYyUTh/exec',
+    APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbzBzq0RFa1kfNKmLx7IoeeWK3BFR8cA4hcYESpy56kNs6AGKuYIxJ1FGET40IrNUEs5/exec',
     REFRESH_INTERVAL: 60 * 60 * 1000,
     LOCALE: 'es-AR', CURRENCY: 'ARS'
 };
@@ -302,13 +517,79 @@ let currentData = null, charts = {}, sortDirection = {};
 function fmtCur(v){ return new Intl.NumberFormat(CONFIG.LOCALE,{style:'currency',currency:CONFIG.CURRENCY,minimumFractionDigits:0,maximumFractionDigits:0}).format(v) }
 function fmtPct(v){ return (v>=0?'+':'')+v.toFixed(1)+'%' }
 function calcDelta(cur,prev){ return prev?((cur-prev)/Math.abs(prev)*100):0 }
+function parseInput(v){ return Number(String(v).replace(/[^0-9.\-]/g,'')) || 0 }
+
+/* ════ MODAL CONTROLS ════ */
+function openModal(){
+    document.getElementById('modalOverlay').classList.add('active');
+    document.body.style.overflow = 'hidden';
+    // Pre-fill with last known values
+    if(currentData && currentData.manual && currentData.manual.fecha){
+        const m = currentData.manual;
+        document.getElementById('fBancoCuenta').value = m.bancoCuenta || '';
+        document.getElementById('fSaldoMP').value = m.saldoMP || '';
+        document.getElementById('fEfectivoCaja').value = m.efectivoCaja || '';
+        document.getElementById('fInversiones').value = m.inversiones || '';
+        document.getElementById('fDeudaProveedores').value = m.deudaProveedores || '';
+        document.getElementById('fDeudaServicios').value = m.deudaServicios || '';
+        document.getElementById('fDeudaMP').value = m.deudaMP || '';
+        document.getElementById('fInversionPublicidad').value = m.inversionPublicidad || '';
+        document.getElementById('fGastoMarketing').value = m.gastoMarketing || '';
+        document.getElementById('fVentasCorporativas').value = m.ventasCorporativas || '';
+    }
+}
+
+function closeModal(){
+    document.getElementById('modalOverlay').classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+async function submitManualData(){
+    const btn = document.getElementById('btnSubmitManual');
+    btn.classList.add('loading');
+    btn.disabled = true;
+
+    const params = new URLSearchParams({
+        action: 'write',
+        bancoCuenta: parseInput(document.getElementById('fBancoCuenta').value),
+        saldoMP: parseInput(document.getElementById('fSaldoMP').value),
+        efectivoCaja: parseInput(document.getElementById('fEfectivoCaja').value),
+        inversiones: parseInput(document.getElementById('fInversiones').value),
+        deudaProveedores: parseInput(document.getElementById('fDeudaProveedores').value),
+        deudaServicios: parseInput(document.getElementById('fDeudaServicios').value),
+        deudaMP: parseInput(document.getElementById('fDeudaMP').value),
+        inversionPublicidad: parseInput(document.getElementById('fInversionPublicidad').value),
+        gastoMarketing: parseInput(document.getElementById('fGastoMarketing').value),
+        ventasCorporativas: parseInput(document.getElementById('fVentasCorporativas').value)
+    });
+
+    try {
+        await fetch(CONFIG.APPS_SCRIPT_URL + '?' + params.toString(), { mode: 'no-cors' });
+        closeModal();
+        // Show success
+        document.getElementById('successBanner').innerHTML = `
+            <div class="success-banner">
+                <span>✅</span>
+                <span><strong>¡Datos guardados!</strong> La información se grabó en tu Google Sheets. Sincronizando dashboard...</span>
+            </div>`;
+        setTimeout(() => document.getElementById('successBanner').innerHTML = '', 5000);
+        // Wait a moment then refresh
+        setTimeout(() => renderDashboard(), 2000);
+    } catch(e) {
+        alert('Error al guardar: ' + e.message);
+    } finally {
+        btn.classList.remove('loading');
+        btn.disabled = false;
+    }
+}
 
 /* ════ DEMO DATA ════ */
 function generateDemoData(){
     return {
         lastUpdate: new Date().toISOString(),
         cashFlow: { currentMonth:'marzo', ingresosMercadoPago:5618703, ingresosEfectivo:2780000, ingresosDeudaDuek:165000, cajaFinal:4067067.66, prevIngresosMercadoPago:4200000, prevIngresosEfectivo:2100000, prevIngresosDeudaDuek:120000, prevCajaFinal:3500000, monthlyLabels:['noviembre','diciembre','enero','febrero','marzo'], monthlyCajaFinal:[1200000,1850000,2900000,3500000,4067067.66] },
-        sales: { currentMonth:'marzo', ventasTotal:4785000, ventasCobrado:992000, inversionPub:150000, prevVentasTotal:14719218.5, prevVentasCobrado:8098081, prevInversionPub:1028000 },
+        sales: { currentMonth:'marzo', ventasTotal:4785000, ventasCobrado:992000, inversionPub:150000, prevVentasTotal:14719218.5, prevVentasCobrado:8098081, prevInversionPub:1028000, ventasTelefonicas: 2400000, deudaClientes: 3793000, deudaDuek: 5800000, ventasMercadoLibre: 1050000 },
+        manual: { fecha:'2026-03-10', bancoCuenta:1500000, saldoMP:850000, efectivoCaja:120000, inversiones:5000000, deudaProveedores:2300000, deudaServicios:150000, deudaMP:0, inversionPublicidad:300000, gastoMarketing:100000, ventasCorporativas:3000000, totalLiquidez:7470000, totalPasivo:2450000, prev:null, history:[] },
         monthlyEvolution: { labels:['noviembre','diciembre','enero','febrero','marzo'], ventasTotal:[5640100,4413381.8,13026880,14719218.5,4785000], ventasCobrado:[1436000,2632240,9386580,8098081,992000], inversionPub:[500000,700000,1131012,1028000,150000] },
         ordersByStatus: { COBRADO:145, ANULADO:28, 'DEUDA DUEK':35 }, orderAmountByStatus: { COBRADO:32500000, ANULADO:3200000, 'DEUDA DUEK':5800000 },
         cheques: { labels:['feb-2026','mar-2026','abr-2026','ago-2026'], montos:[2800000,5903435,4500000,3200000] },
@@ -333,11 +614,11 @@ async function fetchData(){
 /* ════ LOGIC: SEMÁFORO ════ */
 function getStatus(val, type, isInv = false) {
     if(type === 'growth') {
-        if(isInv) { // Inverted (e.g. debt, spend). More = bad.
+        if(isInv) {
             if(val <= 0) return {c:'success', t:'Bien', i:'✓'};
             if(val <= 10) return {c:'warning', t:'Normal', i:'!'};
             return {c:'danger', t:'Crítico', i:'✗'};
-        } else { // Normal growth. More = good.
+        } else {
             if(val > 0) return {c:'success', t:'Bien', i:'✓'};
             if(val > -10) return {c:'warning', t:'Atención', i:'!'};
             return {c:'danger', t:'Crítico', i:'✗'};
@@ -346,35 +627,61 @@ function getStatus(val, type, isInv = false) {
         if(val >= 2.5) return {c:'success', t:'Excelente', i:'✓'};
         if(val >= 1.5) return {c:'warning', t:'Aceptable', i:'!'};
         return {c:'danger', t:'Bajo', i:'✗'};
+    } else if(type === 'info') {
+        return {c:'info', t:'Dato', i:'ℹ'};
+    } else if(type === 'liquidity') {
+        if(val > 0) return {c:'success', t:'Positivo', i:'✓'};
+        if(val === 0) return {c:'warning', t:'Neutro', i:'!'};
+        return {c:'danger', t:'Negativo', i:'✗'};
     }
 }
 
 function renderKPIs(data){
-    const cf=data.cashFlow, sl=data.sales;
+    const cf=data.cashFlow, sl=data.sales, mn=data.manual||{};
     
     const roi = sl.inversionPub>0 ? sl.ventasCobrado/sl.inversionPub : 0;
     const prevRoi = sl.prevInversionPub>0 ? sl.prevVentasCobrado/sl.prevInversionPub : 0;
 
+    // Tesorería calculations
+    const totalLiquidez = (mn.bancoCuenta||0) + (mn.saldoMP||0) + (mn.efectivoCaja||0) + (mn.inversiones||0);
+    const totalPasivo = (mn.deudaProveedores||0) + (mn.deudaServicios||0) + (mn.deudaMP||0);
+    const posicionNeta = totalLiquidez - totalPasivo;
+
+    // Previous values for tesoreria deltas
+    const prevMn = mn.prev || {};
+    const prevLiquidez = (prevMn.bancoCuenta||0) + (prevMn.saldoMP||0) + (prevMn.efectivoCaja||0) + (prevMn.inversiones||0);
+    const prevPasivo = (prevMn.deudaProveedores||0) + (prevMn.deudaServicios||0) + (prevMn.deudaMP||0);
+
     const kpis = [
-        { id:'cash', arr:[
-            {label:'Banco / Mercado Pago', val:cf.ingresosMercadoPago, delta:calcDelta(cf.ingresosMercadoPago,cf.prevIngresosMercadoPago), type:'growth'},
-            {label:'Efectivo en Caja', val:cf.ingresosEfectivo, delta:calcDelta(cf.ingresosEfectivo,cf.prevIngresosEfectivo), type:'growth'},
-            {label:'Cobro Deudas', val:cf.ingresosDeudaDuek, delta:calcDelta(cf.ingresosDeudaDuek,cf.prevIngresosDeudaDuek), type:'growth'},
-            {label:'Caja Final Mensual', val:cf.cajaFinal, delta:calcDelta(cf.cajaFinal,cf.prevCajaFinal), type:'growth'}
+        { id:'tesoreria', arr:[
+            {label:'Banco Cta Cte', val:mn.bancoCuenta||0, delta:calcDelta(mn.bancoCuenta||0,prevMn.bancoCuenta||0), type:'growth'},
+            {label:'Saldo Mercado Pago', val:mn.saldoMP||0, delta:calcDelta(mn.saldoMP||0,prevMn.saldoMP||0), type:'growth'},
+            {label:'Efectivo en Caja', val:mn.efectivoCaja||0, delta:calcDelta(mn.efectivoCaja||0,prevMn.efectivoCaja||0), type:'growth'},
+            {label:'Total Liquidez', val:totalLiquidez, delta:calcDelta(totalLiquidez,prevLiquidez), type:'growth'}
         ]},
         { id:'sales', arr:[
             {label:'Ventas Total', val:sl.ventasTotal, delta:calcDelta(sl.ventasTotal,sl.prevVentasTotal), type:'growth'},
             {label:'Ventas Cobrado', val:sl.ventasCobrado, delta:calcDelta(sl.ventasCobrado,sl.prevVentasCobrado), type:'growth'},
-            {label:'Inversión Pub.', val:sl.inversionPub, delta:calcDelta(sl.inversionPub,sl.prevInversionPub), type:'growth', inv:true},
+            {label:'Inversión Pub.', val:sl.inversionPub||(mn.inversionPublicidad||0), delta:calcDelta(sl.inversionPub||(mn.inversionPublicidad||0),sl.prevInversionPub), type:'growth', inv:true},
             {label:'ROI Publicitario', val:roi, disp:roi>0?roi.toFixed(1)+'x':'N/A', delta:calcDelta(roi,prevRoi), type:'roi'}
+        ]},
+        { id:'receivables', arr:[
+            {label:'Deuda Clientes (Cta Cte)', val:sl.deudaClientes||0, delta:0, type:'growth', inv:true},
+            {label:'Deuda Duek', val:sl.deudaDuek||0, delta:0, type:'growth', inv:true},
+            {label:'Ventas Telefónicas', val:sl.ventasTelefonicas||0, delta:0, type:'growth'},
+            {label:'Posición Neta', val:posicionNeta, disp:fmtCur(posicionNeta), delta:0, type:'liquidity'}
         ]}
     ];
 
     kpis.forEach(section => {
+        const el = document.getElementById(`kpi${section.id.charAt(0).toUpperCase() + section.id.slice(1)}`);
+        if(!el) return;
         const html = section.arr.map(k => {
-            const st = getStatus(k.type === 'roi' ? k.val : k.delta, k.type, k.inv);
+            const st = getStatus(
+                k.type === 'roi' ? k.val : (k.type === 'liquidity' ? k.val : k.delta),
+                k.type, k.inv
+            );
             const valStr = k.disp || fmtCur(k.val);
-            // Delta styling
             let dClass = 'delta-neutral';
             let dArrow = '→';
             if(k.delta > 0) { dClass = k.inv ? 'delta-up bad' : 'delta-up good'; dArrow = '↑'; }
@@ -391,12 +698,12 @@ function renderKPIs(data){
                         ${st.i} ${st.t}
                     </span>
                     <span class="kpi-delta ${dClass}">
-                        ${dArrow} ${fmtPct(Math.abs(k.delta))}
+                        ${k.delta !== 0 ? dArrow + ' ' + fmtPct(Math.abs(k.delta)) : '—'}
                     </span>
                 </div>
             </div>`;
         }).join('');
-        document.getElementById(`kpi${section.id.charAt(0).toUpperCase() + section.id.slice(1)}`).innerHTML = html;
+        el.innerHTML = html;
     });
 }
 
@@ -419,7 +726,7 @@ function renderCharts(data){
     const statKeys=Object.keys(data.orderAmountByStatus||data.ordersByStatus);
     const statVals=Object.values(data.orderAmountByStatus||data.ordersByStatus);
     charts.status=new Chart(document.getElementById('chartStatus'),{
-        type:'doughnut',data:{labels:statKeys,datasets:[{data:statVals,backgroundColor:['#10b981','#ef4444','#f59e0b','#3b82f6'],borderWidth:2,borderColor:bgWhite}]},
+        type:'doughnut',data:{labels:statKeys,datasets:[{data:statVals,backgroundColor:['#10b981','#ef4444','#f59e0b','#3b82f6','#6366f1','#8b5cf6','#ec4899'],borderWidth:2,borderColor:bgWhite}]},
         options:{responsive:true,maintainAspectRatio:false,cutout:'75%',plugins:{legend:{position:'right',...leg},tooltip:ttip}}
     });
 
