@@ -244,8 +244,19 @@
             <div class="metric-title" style="margin-bottom:24px;">Mapa Caliente de Pedidos (Hora del Día)</div>
             <div style="height:280px;"><canvas id="chartHours"></canvas></div>
         </div>
-    </div>
+        </div>
 
+</div>
+
+<!-- Modal Próximos Cheques -->
+<div class="modal-overlay" id="upcomingModal" onclick="if(event.target===this)this.classList.remove('active')">
+    <div class="modal" style="max-width:500px; padding:24px;">
+        <h3 style="margin-bottom:16px; font-size:1.1rem; color:var(--text-main);">Próximos Cheques (A vencer)</h3>
+        <div id="upcomingListContainer" style="max-height:60vh; overflow-y:auto;"></div>
+        <div style="display:flex; justify-content:flex-end; margin-top:24px;">
+            <button class="btn btn-primary" onclick="document.getElementById('upcomingModal').classList.remove('active')">Cerrar</button>
+        </div>
+    </div>
 </div>
 
 <!-- Info Modal -->
