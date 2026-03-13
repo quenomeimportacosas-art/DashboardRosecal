@@ -212,12 +212,15 @@ var gasBackend = {
             
             var rawDate = r[ci.fecha];
             var tsFull = "";
-            if (rawDate instanceof Date) { tsFull = rawDate.toISOString(); }
+            var localDate = null;
+            if (rawDate instanceof Date) { localDate = rawDate; }
             else { 
                 var parsed = new Date(rawDate);
-                if (!isNaN(parsed.getTime())) tsFull = parsed.toISOString(); 
+                if (!isNaN(parsed.getTime())) localDate = parsed; 
             }
-            if(!tsFull) continue;
+            if(!localDate) continue;
+            // Usar fecha local en vez de toISOString() para evitar desfase por zona horaria
+            tsFull = localDate.getFullYear() + '-' + this.padZero(localDate.getMonth() + 1) + '-' + this.padZero(localDate.getDate()) + 'T' + this.padZero(localDate.getHours()) + ':' + this.padZero(localDate.getMinutes()) + ':' + this.padZero(localDate.getSeconds());
             
             var yMonth = tsFull.substring(0, 7);
             

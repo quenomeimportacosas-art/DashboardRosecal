@@ -394,7 +394,7 @@ function coreLogic(d1, d2, m1) {
                     if(o.status === 'COBRADO') { pCobrados++; pCobradosVal += o.amount; }
                     else pNoCobrados++;
                     
-                    let dateKey = od.getFullYear() + '-' + String(od.getMonth()+1).padStart(2,'0') + '-' + String(od.getDate()).padStart(2,'0');
+                    let dateKey = od.toISOString().split('T')[0];
                     daily[dateKey] = (daily[dateKey]||0) + o.amount;
                     hourly[od.getHours()]++;
                 }
@@ -499,30 +499,11 @@ function coreLogic(d1, d2, m1) {
     Object.values(charts).forEach(c=>c.destroy());
     
     // Reservamos data en window para re-dibujar
-    // Generar todos los días del 1 hasta hoy (o fin de mes si es mes pasado)
-    {
-        const y = today.getFullYear();
-        const m = today.getMonth(); // 0-based
-        // Determinar si estamos viendo el mes actual
-        const viewingYear = parseInt(d1.computedMonth.split('-')[0]);
-        const viewingMonth = parseInt(d1.computedMonth.split('-')[1]) - 1;
-        const isCurrentMonth = (viewingYear === y && viewingMonth === m);
-        const lastDay = isCurrentMonth ? today.getDate() : new Date(viewingYear, viewingMonth + 1, 0).getDate();
-        
-        const padZ = n => n < 10 ? '0' + n : '' + n;
-        const allDays = [];
-        const allData = [];
-        for (let d = 1; d <= lastDay; d++) {
-            const key = viewingYear + '-' + padZ(viewingMonth + 1) + '-' + padZ(d);
-            allDays.push(key);
-            allData.push(curStats.daily[key] || 0);
-        }
-        window._chartData = {
-            daysArr: allDays,
-            dailyData: allData,
-            monthProps: glob.porMes || {}
-        };
-    }
+    window._chartData = {
+        daysArr: Object.keys(curStats.daily).sort(),
+        dailyData: Object.keys(curStats.daily).sort().map(d => curStats.daily[d]),
+        monthProps: glob.porMes || {}
+    };
 
     updateChartView();
 
