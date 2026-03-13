@@ -286,16 +286,14 @@ var gasBackend = {
         for (var i = 1; i < data.length; i++) {
             var r = data[i];
             if (!r[ci.numero >= 0 ? ci.numero : 0]) continue;
-            var est = String(r[ci.estado >= 0 ? ci.estado : 5] || '').toUpperCase();
-            if (est === 'ACTIVO' || est === 'VENCIDO') {
-                cheques.push({
+            var est = String(r[ci.estado >= 0 ? ci.estado : 5] || '').trim().toUpperCase();
+            cheques.push({
                 numero: String(r[ci.numero >= 0 ? ci.numero : 0] || ''),
                 proveedor: String(r[ci.proveedor >= 0 ? ci.proveedor : 1] || ''),
                 vencimiento: this.fmtDate(r[ci.vencimiento >= 0 ? ci.vencimiento : 3]),
                 monto: this.toNum(r[ci.monto >= 0 ? ci.monto : 4]),
-                estado: est
-                });
-            }
+                estado: est || 'PENDIENTE'
+            });
         }
         return cheques;
     },

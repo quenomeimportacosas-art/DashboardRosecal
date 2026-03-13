@@ -9,14 +9,15 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <style>
         :root {
-            --bg-body: #fafafa; --bg-card: #ffffff;
-            --border: #e4e4e7;  --border-hover: #d4d4d8;
-            --text-main: #18181b; --text-sec: #52525b; --text-muted: #a1a1aa;
-            --success: #10b981; --success-bg: rgba(16, 185, 129, 0.1);
-            --danger: #ef4444; --danger-bg: rgba(239, 68, 68, 0.1);
-            --warning: #f59e0b;
-            --radius: 8px; --shadow: 0 1px 2px rgba(0,0,0,0.04);
-            --shadow-modal: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+            --bg-body: #ffffff; --bg-card: #ffffff;
+            --border: #e5e5e5;  --border-hover: #d1d1d1;
+            --text-main: #111111; --text-sec: #666666; --text-muted: #8e8e8e;
+            --success: #637c6c; --success-bg: #f2f5f3; /* Verde Salvia */
+            --danger: #b56b6b; --danger-bg: #f9f5f5; /* Rojo Desaturado */
+            --warning: #d4a373; --warning-bg: #fcf8f2; /* Amarillo Arena */
+            --bg-soft: #F9F9F8;
+            --radius: 6px; --shadow: none;
+            --shadow-modal: 0 8px 30px rgba(0,0,0,0.12);
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg-body); color: var(--text-main); line-height: 1.5; -webkit-font-smoothing: antialiased; }
@@ -52,7 +53,47 @@
         .metric-value { font-size: 1.5rem; font-weight: 600; color: var(--text-main); margin-bottom: 8px; letter-spacing: -0.02em; }
         .metric-delta { font-size: 0.8rem; font-weight: 500; display: flex; align-items: center; gap: 4px; }
         
-        .cheque-banner { background: #fffbeb; border: 1px solid #fcd34d; border-radius: var(--radius); padding: 16px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;}
+        /* Tab System */
+        .tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 24px; gap: 24px; }
+        .tab-btn { background: none; border: none; padding: 8px 0; font-size: 14px; font-weight: 500; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; position: relative; bottom: -1px; }
+        .tab-btn.active { color: var(--text-main); border-bottom-color: var(--text-main); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* Custom Risk Widget Styles */
+        .risk-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+        .risk-metric-card { background: var(--bg-soft); border-radius: 6px; padding: 16px; border: none; }
+        .risk-metric-label { font-size: 12px; color: var(--text-sec); margin-bottom: 4px; font-weight: 400; }
+        .risk-metric-val { font-size: 14px; font-weight: 500; color: var(--text-main); }
+        .risk-metric-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+        .accordion { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+        .accordion-header { padding: 12px 16px; background: #fff; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
+        .accordion-header:last-child { border-bottom: none; }
+        .accordion-content { display: none; padding: 0; background: #fff; }
+        .accordion.open .accordion-content { display: block; }
+        .accordion-item { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+        .accordion-item:last-child { border-bottom: none; }
+
+        /* Filter Chips */
+        .filter-group { display: flex; gap: 8px; margin-bottom: 16px; }
+        .chip { padding: 4px 12px; border-radius: 99px; font-size: 12px; border: 1px solid var(--border); background: #fff; color: var(--text-sec); cursor: pointer; transition: all 0.2s; }
+        .chip.active { background: var(--text-main); color: #fff; border-color: var(--text-main); }
+
+        /* Table Styles */
+        .simple-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .simple-table th { text-align: left; padding: 12px; border-bottom: 1px solid var(--border); color: var(--text-sec); font-weight: 500; font-size: 12px; }
+        .simple-table td { padding: 12px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
+        .simple-table tr.paid { opacity: 0.5; }
+
+        .status-select { padding: 4px 8px; border-radius: 4px; border: 1px solid transparent; font-size: 12px; font-weight: 500; cursor: pointer; outline: none; }
+        .status-pending { background: var(--warning-bg); color: var(--warning); }
+        .status-vencido { background: var(--danger-bg); color: var(--danger); }
+        .status-pagado { background: var(--success-bg); color: var(--success); }
+        
+        .badge-small { padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+
+        .cheque-banner { display: none; } /* Hide old banner */
 
         .charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 32px; }
         
@@ -120,8 +161,68 @@
 
     <!-- Segunda Fila: Riesgo -->
     <div class="section-header">Riesgo Financiero</div>
-    <div id="checkBannerContainer"></div>
-    <div class="metrics-grid" id="rowRisk"></div>
+    <div class="metric-card" style="margin-bottom: 32px; padding: 24px;">
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('risk-resumen', this)">Resumen</button>
+            <button class="tab-btn" onclick="switchTab('risk-manage', this)">Gestionar cheques</button>
+        </div>
+
+        <div id="risk-resumen" class="tab-content active">
+            <div class="risk-grid-3" id="riskGridSummary">
+                <div class="risk-metric-card">
+                    <div class="risk-metric-label">Próximo a pagar</div>
+                    <div class="risk-metric-val" id="riskNextVal">--</div>
+                    <div class="risk-metric-sub" id="riskNextSub">--</div>
+                </div>
+                <div class="risk-metric-card">
+                    <div class="risk-metric-label">Estado caja</div>
+                    <div class="risk-metric-val" id="riskBoxStatus">--</div>
+                    <div class="risk-metric-sub" id="riskBoxSub">--</div>
+                </div>
+                <div class="risk-metric-card">
+                    <div class="risk-metric-label">Siguiente</div>
+                    <div class="risk-metric-val" id="riskAfterVal">--</div>
+                    <div class="risk-metric-sub" id="riskAfterSub">--</div>
+                </div>
+            </div>
+            
+            <div class="accordion" id="riskAccordion">
+                <div class="accordion-header" onclick="this.parentElement.classList.toggle('open')">
+                    <span style="font-size: 13px; font-weight: 500;">Ver próximos</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                </div>
+                <div class="accordion-content" id="riskUpcomingList">
+                    <!-- Items will be injected here -->
+                </div>
+            </div>
+        </div>
+
+        <div id="risk-manage" class="tab-content">
+            <div class="filter-group" id="riskTableFilters">
+                <button class="chip active" onclick="filterRiskTable('TODOS', this)">Todos</button>
+                <button class="chip" onclick="filterRiskTable('PENDIENTE', this)">Pendientes</button>
+                <button class="chip" onclick="filterRiskTable('VENCIDO', this)">Vencidos</button>
+                <button class="chip" onclick="filterRiskTable('PAGADO', this)">Pagados</button>
+            </div>
+            <div style="overflow-x: auto;">
+                <table class="simple-table">
+                    <thead>
+                        <tr>
+                            <th>Destinatario</th>
+                            <th>Fecha</th>
+                            <th>Monto</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="riskTableBody">
+                        <!-- Rows injected here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div id="checkBannerContainer" style="display:none;"></div>
+    <div class="metrics-grid" id="rowRisk" style="display:none;"></div>
 
     <!-- Tercera Fila: Crecimiento -->
     <div class="section-header">Motor de Crecimiento</div>
@@ -344,93 +445,131 @@ function coreLogic(d1, d2, m1) {
           info: { desc:'Porcentaje de rentabilidad pura versus Ventas con status COBRADO.', calc:`Ventas Cobradas: ${fmt(curStats.pCobradosVal)}<br>- Inversión Publicidad & Marketing: ${fmt(impAds+gMkt)}<br>- Gastos Operativos Fijos: ${fmt(ops)}<br>- Costo Beato: ${fmt(sl.costoBeato)}<br>- Costo Logística: ${fmt(sl.costoLogistica)}<hr/>Ganancia Libre = ${fmt(gananciaNeta)}<br>Margen = ${fmt(margenNeto,'dec')}%` } }
     ]);
 
-    /* 2. RIESGO Y CHEQUES */
-    const deudasProv = (m.deudaProveedores||0) + (m.deudaServicios||0) + (m.deudaMP||0);
-    const chequesEmitidosActivos = d1.totalChequesActivos || 0;
+    /* 2. RIESGO Y CHEQUES REDESIGN */
+    renderRiskWidget(d1, cajaActual);
+}
+
+function switchTab(contentId, btn) {
+    const parent = btn.parentElement;
+    parent.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
     
-    // Calcular deuda clientes distribuida y porcentaje si está disponible
-    const currentDeudaClientes = glob.totalDeuda||0;
-    const activos = cajaActual + currentDeudaClientes;
-    const pasivos = deudasProv + chequesEmitidosActivos;
-    const posNeta = activos - pasivos;
+    const container = parent.parentElement;
+    container.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById(contentId).classList.add('active');
+}
 
-    drawGrid('rowRisk', [
-        { label: 'Deuda Clientes', val: currentDeudaClientes, prev: 0, t: 'cur', inv: true, hideDelta:true, 
-          info: { desc:'Dinero en la calle de los que no fueron ni cobrados ni anulados.', calc:`Calculado sumando toda la columna histórico que no esté en status COBRADO ni ANULADO.<br>Total: ${fmt(currentDeudaClientes)}`} },
-        { label: 'Cheques Emitidos', val: chequesEmitidosActivos, prev: 0, t: 'cur', inv: true, hideDelta:true,
-          info: { desc:'Total de pasivos diferidos.', calc:`Cheques (ACTIVO/VENCIDO): ${fmt(chequesEmitidosActivos)}`} },
-        { label: 'Posición Neta (Liquidez)', val: posNeta, prev: 0, t: 'cur', hideDelta:true,
-          info: { desc:'Tus Activos reales restando TODOS tus pasivos exigibles y futuros.', calc:`Activos (Caja + Deudas clientes): ${fmt(activos)}<br>Pasivos (Deuda Prov + Cheques): ${fmt(pasivos)}<hr/>Posición: ${fmt(posNeta)}`} }
-    ]);
+function renderRiskWidget(d1, caja) {
+    const cheques = d1.chequesActivos || [];
+    const today = new Date();
+    today.setHours(0,0,0,0);
 
-    // Próximos cheques
-    const cl = d1.chequesActivos || [];
-    let upcHtml = '', vencidosHtml = '';
-    if(cl.length > 0) {
-        cl.sort((a,b) => new Date(a.vencimiento) - new Date(b.vencimiento));
-        
-        const getDaysStr = (venc) => {
-            const todayTz = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
-            const vencTz = new Date(venc + 'T12:00:00').getTime();
-            const diffDays = Math.round((vencTz - todayTz)/(1000*60*60*24));
-            if(diffDays < 0) return `hace ${Math.abs(diffDays)} días (VENCIDO)`;
-            if(diffDays === 0) return `Hoy`;
-            if(diffDays === 1) return `Mañana`;
-            return `en ${diffDays} días`;
-        };
+    // Helpers
+    const getDays = (vDate) => {
+        const v = new Date(vDate + 'T12:00:00');
+        v.setHours(0,0,0,0);
+        return Math.round((v - today)/(1000*60*60*24));
+    };
 
-        const activosList = cl.filter(c => c.estado === 'ACTIVO');
-        const vencidosList = cl.filter(c => c.estado === 'VENCIDO');
+    const fmtDays = (d) => {
+        if(d < 0) return `Hace ${Math.abs(d)} días`;
+        if(d === 0) return 'Hoy';
+        if(d === 1) return 'Mañana';
+        return `En ${d} días`;
+    };
 
-        if(activosList.length > 0) {
-            const px = activosList[0];
-            const pxNext = activosList.length > 1 ? activosList[1] : null;
+    // TAB 1: RESUMEN
+    // Filtrar: No pagados, ordenados por fecha
+    const pendingList = cheques.filter(c => c.estado !== 'PAGADO')
+        .sort((a,b) => new Date(a.vencimiento) - new Date(b.vencimiento));
 
-            const str1 = getDaysStr(px.vencimiento);
-            const deltaCheque = cajaActual - px.monto;
-            
-            let nextText = '';
-            if(pxNext) {
-                nextText = `<div style="font-size:0.85rem; color:var(--text-sec); margin-top:12px; border-top:1px solid rgba(0,0,0,0.05); padding-top:12px;">
-                    Siguiente pago a liquidar <strong>${getDaysStr(pxNext.vencimiento)}</strong> (${formatDDMMAA(pxNext.vencimiento)}): a nombre de <span style="color:var(--text-main); font-weight:600;">${pxNext.proveedor}</span> por <strong>${fmt(pxNext.monto)}</strong>.
-                </div>`;
-            }
+    if(pendingList.length > 0) {
+        const first = pendingList[0];
+        const daysFirst = getDays(first.vencimiento);
+        document.getElementById('riskNextVal').innerText = fmt(first.monto);
+        document.getElementById('riskNextSub').innerText = `${fmtDays(daysFirst)} • ${first.proveedor}`;
 
-            upcHtml = `<div class="cheque-banner" style="display:block;">
-                <div style="display:flex; justify-content:space-between; width:100%; align-items:center; flex-wrap:wrap; gap:12px;">
-                    <div><strong>Próximo cheque a liquidar ${str1} </strong> (${formatDDMMAA(px.vencimiento)}): A nombre de ${px.proveedor} </div>
-                    <div style="font-size:1.1rem; font-weight:700;">Monto: ${fmt(px.monto)}</div>
-                    <div style="color:${deltaCheque >= 0 ? 'var(--success)' : 'var(--danger)'}; font-weight:600;">ESTADO CAJA: ${deltaCheque >= 0 ? 'CUBIERTO (Sobran '+fmt(deltaCheque)+')' : 'FALTAN '+fmt(Math.abs(deltaCheque))}</div>
-                </div>
-                ${nextText}
-                <div style="margin-top:16px; border-top:1px solid rgba(0,0,0,0.05); padding-top:12px; text-align:right;">
-                    <button class="btn" style="background:var(--bg-body); border-color:var(--border);" onclick="openAllChequesModal()">Ver todos los próximos listos para procesar</button>
-                </div>
-            </div>`;
+        const diff = caja - first.monto;
+        document.getElementById('riskBoxStatus').innerText = diff >= 0 ? 'CUBIERTO' : 'DESCUBIERTO';
+        document.getElementById('riskBoxStatus').style.color = diff >= 0 ? 'var(--success)' : 'var(--danger)';
+        document.getElementById('riskBoxSub').innerText = (diff >= 0 ? 'Sobra ' : 'Falta ') + fmt(Math.abs(diff));
+
+        if(pendingList.length > 1) {
+            const second = pendingList[1];
+            document.getElementById('riskAfterVal').innerText = fmt(second.monto);
+            document.getElementById('riskAfterSub').innerText = `${fmtDays(getDays(second.vencimiento))} • ${second.proveedor}`;
+        } else {
+            document.getElementById('riskAfterVal').innerText = '--';
+            document.getElementById('riskAfterSub').innerText = 'No hay más pendientes';
         }
-
-        window.lastActiveChequesList = activosList;
-
-        if(vencidosList.length > 0) {
-            vencidosHtml = `<div style="margin-bottom:16px;">
-                <div style="font-size:0.85rem; font-weight:600; color:var(--danger); margin-bottom:8px; text-transform:uppercase;">Cheques Vencidos a Regularizar</div>
-                ${vencidosList.map(venc => `
-                    <div style="background:#fef2f2; border:1px solid #fca5a5; border-radius:var(--radius); padding:12px 16px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <span style="font-weight:600; color:var(--danger);">${venc.proveedor}</span> — 
-                            <span style="color:var(--text-sec); font-size:0.85rem;">Venció el ${formatDDMMAA(venc.vencimiento)}</span>
-                            <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Cheque Nº: ${venc.numero}</div>
-                        </div>
-                        <div style="display:flex; align-items:center; gap:16px;">
-                            <span style="font-weight:700; font-size:1.1rem; color:var(--text-main);">${fmt(venc.monto)}</span>
-                            <button class="btn btn-primary" style="background:var(--success); border-color:var(--success); padding:6px 12px; font-size:0.8rem;" onclick="markChequeAsPaid('${venc.numero}')">Marcar Pagado</button>
-                        </div>
-                    </div>
-                `).join('')}
-            </div>`;
-        }
+    } else {
+        ['riskNextVal','riskBoxStatus','riskAfterVal'].forEach(id => document.getElementById(id).innerText = '--');
+        ['riskNextSub','riskBoxSub','riskAfterSub'].forEach(id => document.getElementById(id).innerText = 'Todo al día');
     }
-    document.getElementById('checkBannerContainer').innerHTML = vencidosHtml + upcHtml;
+
+    // Acordeon: Fecha >= Hoy y No Pagado
+    const upcoming = pendingList.filter(c => getDays(c.vencimiento) >= 0);
+    document.getElementById('riskUpcomingList').innerHTML = upcoming.map(c => `
+        <div class="accordion-item">
+            <div>
+                <span style="font-weight:500;">${c.proveedor}</span>
+                <span style="color:var(--text-muted); margin-left:8px;">${formatDDMMAA(c.vencimiento)}</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px;">
+                <span class="badge-small" style="background:var(--warning-bg); color:var(--warning);">${fmtDays(getDays(c.vencimiento))}</span>
+                <span style="font-weight:500;">${fmt(c.monto)}</span>
+            </div>
+        </div>
+    `).join('') || '<div style="padding:16px; font-size:12px; color:var(--text-muted);">No hay cheques próximos.</div>';
+
+    // TAB 2: GESTIONAR
+    window.allCheques = cheques; // Cache for filtering
+    renderRiskTable(cheques);
+}
+
+function renderRiskTable(list) {
+    const tbody = document.getElementById('riskTableBody');
+    tbody.innerHTML = list.map(c => {
+        const isPaid = c.estado === 'PAGADO';
+        const stClass = c.estado === 'VENCIDO' ? 'status-vencido' : (isPaid ? 'status-pagado' : 'status-pending');
+        return `
+            <tr class="${isPaid ? 'paid' : ''}">
+                <td style="font-weight:500;">${c.proveedor}</td>
+                <td style="color:var(--text-sec);">${formatDDMMAA(c.vencimiento)}</td>
+                <td style="font-weight:500;">${fmt(c.monto)}</td>
+                <td>
+                    <select class="status-select ${stClass}" onchange="updateChequeStatus('${c.numero}', this.value)">
+                        <option value="PENDIENTE" ${c.estado === 'PENDIENTE' ? 'selected' : ''}>Pendiente</option>
+                        <option value="VENCIDO" ${c.estado === 'VENCIDO' ? 'selected' : ''}>Vencido</option>
+                        <option value="PAGADO" ${isPaid ? 'selected' : ''}>Pagado</option>
+                    </select>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function filterRiskTable(status, btn) {
+    const chips = btn.parentElement.querySelectorAll('.chip');
+    chips.forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+
+    const filtered = status === 'TODOS' ? window.allCheques : window.allCheques.filter(c => c.estado === status);
+    renderRiskTable(filtered);
+}
+
+async function updateChequeStatus(numero, nuevoEstado) {
+    document.getElementById('dashboardLoader').classList.add('active');
+    const p = new URLSearchParams({ action: 'update_cheque', numero: numero, nuevoEstado: nuevoEstado });
+    try {
+        await fetch(APPS_SCRIPT_URL + '?' + p.toString(), {mode:'no-cors'});
+        // Wait bit for GS to apply
+        setTimeout(() => renderDashboard(), 1200);
+    } catch(e) {
+        alert('Error al actualizar estado.');
+        document.getElementById('dashboardLoader').classList.remove('active');
+    }
+}
 
     /* 3. CRECIMIENTO Y VENTAS MTD */
     const tktPromo = curStats.validOrders > 0 ? (curStats.brutas / curStats.validOrders) : 0;
