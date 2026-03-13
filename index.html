@@ -521,8 +521,24 @@ function coreLogic(d1, d2, m1) {
         window._chartData = {
             daysArr: allDays,
             dailyData: allData,
-            monthProps: glob.porMes || {}
+            monthProps: glob.porMes || {},
+            prevDailyData: null,
+            prevLabel: ''
         };
+        // Si hay mes de comparación, armar sus datos diarios alineados por día del mes
+        if (d2 && prevStats.daily) {
+            const prevViewYear = parseInt(d2.computedMonth.split('-')[0]);
+            const prevViewMonth = parseInt(d2.computedMonth.split('-')[1]) - 1;
+            const padZ2 = n => n < 10 ? '0' + n : '' + n;
+            const prevData = [];
+            for (let d = 1; d <= lastDay; d++) {
+                const key = prevViewYear + '-' + padZ2(prevViewMonth + 1) + '-' + padZ2(d);
+                prevData.push(prevStats.daily[key] || 0);
+            }
+            window._chartData.prevDailyData = prevData;
+            const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+            window._chartData.prevLabel = meses[prevViewMonth] + ' ' + prevViewYear;
+        }
     }
 
     updateChartView();
@@ -745,16 +761,19 @@ function updateChartView() {
     const ttip = { backgroundColor:'#18181b', titleColor:'#fff', padding:10, cornerRadius:4, bodyFont:{family:'Inter'} };
     
     if(mode === 'diario') {
+        const labels = cData.daysArr.map(d => {
+            const dias = ['Do','Lu','Ma','Mi','Ju','Vi','Sa'];
+            const parts = d.split('-');
+            const dt = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+            return dias[dt.getDay()] + ' ' + String(parseInt(parts[2]));
+        });
+        const datasets = [{ label:'Mes actual', data:cData.dailyData, borderColor:'#18181b', backgroundColor:'rgba(24,24,27,0.05)', fill:true, borderWidth:2, tension:0.2, pointRadius:4, pointHoverRadius:6 }];
+        if (cData.prevDailyData) {
+            datasets.push({ label: cData.prevLabel, data: cData.prevDailyData, borderColor:'#a1a1aa', backgroundColor:'transparent', fill:false, borderWidth:2, borderDash:[6,4], tension:0.2, pointRadius:3, pointHoverRadius:5, pointStyle:'circle' });
+        }
         charts.main = new Chart(document.getElementById('chartMain'), {
-            type: 'line', data: {
-                labels: cData.daysArr.map(d => {
-                    const dias = ['Do','Lu','Ma','Mi','Ju','Vi','Sa'];
-                    const parts = d.split('-');
-                    const dt = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
-                    return dias[dt.getDay()] + ' ' + formatDDMMAA(d);
-                }),
-                datasets: [{ label:'Facturación Diaria MTD', data:cData.dailyData, borderColor:'#18181b', backgroundColor:'rgba(24,24,27,0.05)', fill:true, borderWidth:2, tension:0.2, pointRadius:4, pointHoverRadius:6 }]
-            }, options: { responsive:true, maintainAspectRatio:false, plugins:{ tooltip:ttip, legend:{display:false} }, scales:{ x:{grid:{display:false}}, y:{grid:{color:'#f4f4f5'}, ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'k'}} } }
+            type: 'line', data: { labels, datasets },
+            options: { responsive:true, maintainAspectRatio:false, plugins:{ tooltip:ttip, legend:{ display: cData.prevDailyData ? true : false, position:'bottom', labels:{ usePointStyle:true, padding:16, font:{size:12} } } }, scales:{ x:{grid:{display:false}}, y:{grid:{color:'#f4f4f5'}, ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'k'}} } }
         });
         // Ticket diario promedio
         const totalFact = cData.dailyData.reduce((a,b) => a+b, 0);
@@ -763,9 +782,21 @@ function updateChartView() {
         const maxDia = Math.max(...cData.dailyData);
         const minDia = Math.min(...cData.dailyData.filter(v => v > 0));
         const fmt$ = v => '$' + Math.round(v).toLocaleString('es-AR');
+        
+        let comparHtml = '';
+        if (cData.prevDailyData) {
+            const prevTotal = cData.prevDailyData.reduce((a,b) => a+b, 0);
+            const prevDias = cData.prevDailyData.filter(v => v > 0).length;
+            const prevTicket = prevDias > 0 ? prevTotal / prevDias : 0;
+            const delta = prevTicket > 0 ? ((ticketDiario - prevTicket) / prevTicket * 100) : 0;
+            const deltaColor = delta >= 0 ? '#10b981' : '#ef4444';
+            const deltaSign = delta >= 0 ? '▲' : '▼';
+            comparHtml = `<div style="margin-left:8px; color:${deltaColor}; font-weight:600; font-size:0.8rem;">${deltaSign} ${Math.abs(delta).toFixed(1)}% vs ${cData.prevLabel}</div>`;
+        }
+        
         document.getElementById('dailyTicketAvg').innerHTML = `
             <div style="display:flex; gap:24px; align-items:center; flex-wrap:wrap;">
-                <div><span style="color:var(--text-muted); font-weight:500;">Promedio diario</span> <span style="font-weight:700; margin-left:6px;">${fmt$(ticketDiario)}</span></div>
+                <div style="display:flex; align-items:center;"><span style="color:var(--text-muted); font-weight:500;">Promedio diario</span> <span style="font-weight:700; margin-left:6px;">${fmt$(ticketDiario)}</span>${comparHtml}</div>
                 <div><span style="color:var(--text-muted); font-weight:500;">Mejor día</span> <span style="font-weight:700; color:#10b981; margin-left:6px;">${fmt$(maxDia)}</span></div>
                 <div><span style="color:var(--text-muted); font-weight:500;">Menor día</span> <span style="font-weight:700; color:#ef4444; margin-left:6px;">${fmt$(minDia)}</span></div>
             </div>
