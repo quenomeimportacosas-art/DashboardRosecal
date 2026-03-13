@@ -81,13 +81,13 @@
         .chip.active { background: var(--text-main); color: #fff; border-color: var(--text-main); }
 
         /* Table Styles */
-        .simple-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .simple-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 500px; }
         .simple-table thead { position: sticky; top: 0; background: #fff; z-index: 5; }
         .simple-table th { text-align: left; padding: 12px; border-bottom: 1px solid var(--border); color: var(--text-sec); font-weight: 500; font-size: 12px; }
         .simple-table td { padding: 12px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
         .simple-table tr.paid { opacity: 0.5; }
         
-        .table-scroll { max-height: 400px; overflow-y: auto; border: 1px solid var(--border); border-radius: 4px; }
+        .table-scroll { max-height: 400px; overflow-y: auto; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border); border-radius: 4px; }
         .table-scroll::-webkit-scrollbar { width: 6px; }
         .table-scroll::-webkit-scrollbar-track { background: transparent; }
         .simple-table::-webkit-scrollbar-thumb { background: #ddd; border-radius: 10px; }
@@ -119,8 +119,57 @@
         .form-group input { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-family: inherit; }
         .form-group input:focus { outline: none; border-color: var(--text-main); }
 
-        @media(max-width: 1024px) { .metrics-grid { grid-template-columns: repeat(2, 1fr); } .charts-row { grid-template-columns: 1fr; } }
-        @media(max-width: 768px) { .status-bar { flex-direction: column; align-items: flex-start; gap: 12px; } .top-actions { flex-direction: column; align-items: stretch; } .form-grid { grid-template-columns: 1fr; } }
+        @media(max-width: 1024px) { 
+            .metrics-grid { grid-template-columns: repeat(2, 1fr); } 
+            .charts-row { grid-template-columns: 1fr; } 
+            .risk-grid-3 { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media(max-width: 768px) { 
+            .container { padding: 16px 12px; }
+            .status-bar { flex-direction: column; align-items: flex-start; gap: 12px; padding: 12px 16px; } 
+            .status-info { flex-wrap: wrap; gap: 8px; }
+            .status-info span { border-left: none; padding-left: 0; font-size: 0.78rem; }
+            .top-actions { flex-direction: column; align-items: stretch; gap: 10px; } 
+            .date-picker { width: 100%; justify-content: space-between; }
+            .btn { width: 100%; justify-content: center; padding: 10px 16px; }
+            .form-grid { grid-template-columns: 1fr; } 
+            .metrics-grid { grid-template-columns: 1fr; gap: 12px; margin-bottom: 24px; }
+            .metric-card { padding: 16px; }
+            .metric-value { font-size: 1.3rem; }
+            .charts-row { gap: 12px; margin-bottom: 24px; }
+            .section-header { font-size: 0.78rem; flex-wrap: wrap; gap: 8px; }
+            .tabs { gap: 12px; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+            .tab-btn { font-size: 13px; flex-shrink: 0; }
+            .risk-grid-3 { grid-template-columns: 1fr; gap: 8px; }
+            .risk-metric-card { padding: 12px; }
+            .modal { width: 95%; padding: 20px; border-radius: 10px; max-height: 85vh; }
+            .simple-table { font-size: 12px; }
+            .simple-table th, .simple-table td { padding: 8px 6px; }
+            .table-scroll { max-height: 300px; }
+            .chart-container { height: 220px !important; }
+            .filter-group { flex-wrap: wrap; }
+            .accordion-header { padding: 10px 12px; font-size: 13px; }
+            .accordion-item { padding: 10px 12px; font-size: 12px; }
+        }
+        @media(max-width: 480px) {
+            .container { padding: 12px 8px; padding-bottom: env(safe-area-inset-bottom, 12px); }
+            .status-bar { padding: 10px 12px; }
+            .brand { font-size: 1rem; }
+            .status-pill { font-size: 0.72rem; padding: 3px 8px; }
+            .metric-card { padding: 14px; }
+            .metric-title { font-size: 0.72rem; }
+            .metric-value { font-size: 1.15rem; }
+            .metric-delta { font-size: 0.72rem; }
+            .section-header { font-size: 0.72rem; }
+            .modal { padding: 16px; }
+            .form-group input { padding: 10px 12px; font-size: 16px; } /* 16px prevents iOS zoom */
+            select { font-size: 16px; } /* prevents iOS zoom */
+            .btn { min-height: 44px; } /* touch target */
+            .chip { min-height: 36px; display: inline-flex; align-items: center; }
+            .status-select { min-height: 36px; font-size: 14px; }
+            .chart-container { height: 200px !important; }
+            #dailyTicketAvg { flex-direction: column; align-items: flex-start !important; font-size: 0.78rem; }
+        }
     </style>
 </head>
 <body>
@@ -231,19 +280,19 @@
     <!-- Gráficos -->
     <div class="charts-row">
         <div class="metric-card" style="padding:24px;">
-            <div class="metric-title" style="margin-bottom:24px; display:flex; justify-content:space-between; align-items:center;">
+            <div class="metric-title" style="margin-bottom:24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                 Evolución del Negocio
                 <select id="chartViewMode" onchange="updateChartView()" style="padding:4px 8px; font-size:0.8rem; border-radius:4px; border:1px solid var(--border); background:var(--bg-body);">
                     <option value="diario">Mensual (Diaria)</option>
                     <option value="mensual">Histórico (Mes a Mes)</option>
                 </select>
             </div>
-            <div style="height:280px;"><canvas id="chartMain"></canvas></div>
-            <div id="dailyTicketAvg" style="margin-top:16px; padding:12px 16px; background:var(--bg-body); border-radius:8px; border:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; font-size:0.85rem;"></div>
+            <div class="chart-container" style="height:280px;"><canvas id="chartMain"></canvas></div>
+            <div id="dailyTicketAvg" style="margin-top:16px; padding:12px 16px; background:var(--bg-body); border-radius:8px; border:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; flex-wrap:wrap; gap:8px;"></div>
         </div>
         <div class="metric-card" style="padding:24px;">
             <div class="metric-title" style="margin-bottom:24px;">Mapa Caliente de Pedidos (Hora del Día)</div>
-            <div style="height:280px;"><canvas id="chartHours"></canvas></div>
+            <div class="chart-container" style="height:280px;"><canvas id="chartHours"></canvas></div>
         </div>
         </div>
 
@@ -684,7 +733,14 @@ async function updateChequeStatus(numero, nuevoEstado) {
 }
 
 function drawGrid(id, items, colsRule=null) {
-    if(colsRule) document.getElementById(id).style.gridTemplateColumns = colsRule;
+    const el = document.getElementById(id);
+    if(colsRule) {
+        // Solo aplicar colsRule en desktop; en mobile el CSS media query maneja
+        el.setAttribute('data-cols-rule', colsRule);
+        if(window.innerWidth > 768) el.style.gridTemplateColumns = colsRule;
+        else if(window.innerWidth > 1024) el.style.gridTemplateColumns = colsRule;
+        else el.style.gridTemplateColumns = '';
+    }
     window.lastGridItems = window.lastGridItems || {};
     window.lastGridItems[id] = items;
     
@@ -795,12 +851,12 @@ function updateChartView() {
         }
         
         document.getElementById('dailyTicketAvg').innerHTML = `
-            <div style="display:flex; gap:24px; align-items:center; flex-wrap:wrap;">
-                <div style="display:flex; align-items:center;"><span style="color:var(--text-muted); font-weight:500;">Promedio diario</span> <span style="font-weight:700; margin-left:6px;">${fmt$(ticketDiario)}</span>${comparHtml}</div>
-                <div><span style="color:var(--text-muted); font-weight:500;">Mejor día</span> <span style="font-weight:700; color:#10b981; margin-left:6px;">${fmt$(maxDia)}</span></div>
-                <div><span style="color:var(--text-muted); font-weight:500;">Menor día</span> <span style="font-weight:700; color:#ef4444; margin-left:6px;">${fmt$(minDia)}</span></div>
+            <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+                <div style="display:flex; align-items:center; flex-wrap:wrap; gap:4px;"><span style="color:var(--text-muted); font-weight:500; font-size:0.8rem;">Promedio diario</span> <span style="font-weight:700;">${fmt$(ticketDiario)}</span>${comparHtml}</div>
+                <div style="display:flex; align-items:center; gap:4px;"><span style="color:var(--text-muted); font-weight:500; font-size:0.8rem;">Mejor día</span> <span style="font-weight:700; color:#10b981;">${fmt$(maxDia)}</span></div>
+                <div style="display:flex; align-items:center; gap:4px;"><span style="color:var(--text-muted); font-weight:500; font-size:0.8rem;">Menor día</span> <span style="font-weight:700; color:#ef4444;">${fmt$(minDia)}</span></div>
             </div>
-            <div style="color:var(--text-muted);">${diasConVenta} días con ventas</div>
+            <div style="color:var(--text-muted); font-size:0.8rem; white-space:nowrap;">${diasConVenta} días con ventas</div>
         `;
         document.getElementById('dailyTicketAvg').style.display = 'flex';
     } else {
@@ -824,13 +880,13 @@ function updateChartView() {
 function openAllChequesModal() {
     const actList = window.lastActiveChequesList || [];
     const html = actList.map(venc => `
-        <div style="background:var(--bg-body); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
-            <div>
+        <div style="background:var(--bg-body); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <div style="min-width:0;">
                 <span style="font-weight:600; color:var(--text-main);">${venc.proveedor}</span> — 
                 <span style="color:var(--text-sec); font-size:0.85rem;">Vence el ${formatDDMMAA(venc.vencimiento)}</span>
                 <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Cheque Nº: ${venc.numero}</div>
             </div>
-            <div style="font-weight:700; font-size:1.1rem; color:var(--text-main);">${fmt(venc.monto)}</div>
+            <div style="font-weight:700; font-size:1.1rem; color:var(--text-main); white-space:nowrap;">${fmt(venc.monto)}</div>
         </div>
     `).join('');
     document.getElementById('chequesListContainer').innerHTML = html || '<div style="color:var(--text-sec);">No hay cheques activos listados.</div>';
@@ -852,6 +908,14 @@ async function markChequeAsPaid(numero) {
 
 renderDashboard();
 setInterval(renderDashboard, 60*60*1000);
+
+// Responsive grid fix on resize
+window.addEventListener('resize', () => {
+    document.querySelectorAll('[data-cols-rule]').forEach(el => {
+        if(window.innerWidth <= 768) el.style.gridTemplateColumns = '';
+        else el.style.gridTemplateColumns = el.getAttribute('data-cols-rule');
+    });
+});
 </script>
 </body>
 </html>
