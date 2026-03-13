@@ -123,30 +123,48 @@ var gasBackend = {
     toNum: function(v) { return Number(v) || 0; },
 
     readManualData: function(ss, targetDate) {
-        var empty = { bancoCuenta: 0, saldoMP: 0, efectivoCaja: 0, inversiones: 0, deudaProveedores: 0, deudaServicios: 0, deudaMP: 0, inversionPublicidad: 0, gastoMarketing: 0, ventasCorporativas: 0, gastosOperativos: 0, prev: null };
+        var createEmpty = function() { return { bancoCuenta: 0, saldoMP: 0, efectivoCaja: 0, inversiones: 0, deudaProveedores: 0, deudaServicios: 0, deudaMP: 0, inversionPublicidad: 0, gastoMarketing: 0, ventasCorporativas: 0, gastosOperativos: 0 }; };
         var sheet = ss.getSheetByName('Datos Manuales');
-        if (!sheet) return empty;
-        var data = sheet.getDataRange().getValues();
-        if (data.length < 2) return empty;
+        
+        var currentSum = createEmpty();
+        var prevSum = createEmpty();
+        currentSum.prev = prevSum;
 
-        var history = [], prevHistory = [];
+        if (!sheet) return currentSum;
+        var data = sheet.getDataRange().getValues();
+        if (data.length < 2) return currentSum;
+
         var targetYMonth = targetDate.getFullYear() + '-' + this.padZero(targetDate.getMonth() + 1);
         var prevDDate = new Date(targetDate.getFullYear(), targetDate.getMonth() - 1, 1);
         var prevYMonth = prevDDate.getFullYear() + '-' + this.padZero(prevDDate.getMonth() + 1);
+
+        var keys = Object.keys(currentSum).filter(function(k) { return k !== 'prev'; });
 
         for (var i = 1; i < data.length; i++) {
             var row = data[i];
             if (!row[0]) continue;
             var dStr = this.fmtDate(row[0]);
-            var dObj = { fecha: dStr, bancoCuenta: this.toNum(row[1]), saldoMP: this.toNum(row[2]), efectivoCaja: this.toNum(row[3]), inversiones: this.toNum(row[4]), deudaProveedores: this.toNum(row[5]), deudaServicios: this.toNum(row[6]), deudaMP: this.toNum(row[7]), inversionPublicidad: this.toNum(row[8]), gastoMarketing: this.toNum(row[9]), ventasCorporativas: this.toNum(row[10]), gastosOperativos: this.toNum(row[11]) };
+            
+            var isCurrent = dStr.indexOf(targetYMonth) === 0;
+            var isPrev = dStr.indexOf(prevYMonth) === 0;
 
-            if (dStr.indexOf(targetYMonth) === 0) history.push(dObj);
-            if (dStr.indexOf(prevYMonth) === 0) prevHistory.push(dObj);
+            if (isCurrent || isPrev) {
+                var dObj = { 
+                    bancoCuenta: this.toNum(row[1]), saldoMP: this.toNum(row[2]), 
+                    efectivoCaja: this.toNum(row[3]), inversiones: this.toNum(row[4]), 
+                    deudaProveedores: this.toNum(row[5]), deudaServicios: this.toNum(row[6]), 
+                    deudaMP: this.toNum(row[7]), inversionPublicidad: this.toNum(row[8]), 
+                    gastoMarketing: this.toNum(row[9]), ventasCorporativas: this.toNum(row[10]), 
+                    gastosOperativos: this.toNum(row[11]) 
+                };
+
+                for (var k = 0; k < keys.length; k++) {
+                    if (isCurrent) currentSum[keys[k]] += dObj[keys[k]];
+                    if (isPrev) prevSum[keys[k]] += dObj[keys[k]];
+                }
+            }
         }
-
-        var last = history.length > 0 ? history[history.length - 1] : empty;
-        last.prev = prevHistory.length > 0 ? prevHistory[prevHistory.length - 1] : empty;
-        return last;
+        return currentSum;
     },
 
     readRawGanancias: function(ss, targetDate) {
