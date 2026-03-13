@@ -496,19 +496,17 @@ function drawGrid(id, items, colsRule=null) {
 }
 
 function openModal() { 
-    if(window.lastManualData) {
-        document.getElementById('fBanco').value = window.lastManualData.bancoCuenta || '';
-        document.getElementById('fMP').value = window.lastManualData.saldoMP || '';
-        document.getElementById('fCaja').value = window.lastManualData.efectivoCaja || '';
-        document.getElementById('fInv').value = window.lastManualData.inversiones || '';
-        document.getElementById('fOps').value = window.lastManualData.gastosOperativos || '';
-        document.getElementById('fDeudaProv').value = window.lastManualData.deudaProveedores || '';
-        document.getElementById('fDeudaServ').value = window.lastManualData.deudaServicios || '';
-        document.getElementById('fDeudaMP').value = window.lastManualData.deudaMP || '';
-        document.getElementById('fAds').value = window.lastManualData.inversionPublicidad || '';
-        document.getElementById('fMkt').value = window.lastManualData.gastoMarketing || '';
-        document.getElementById('fCorp').value = window.lastManualData.ventasCorporativas || '';
-    }
+    document.getElementById('fBanco').value = '';
+    document.getElementById('fMP').value = '';
+    document.getElementById('fCaja').value = '';
+    document.getElementById('fInv').value = '';
+    document.getElementById('fOps').value = '';
+    document.getElementById('fDeudaProv').value = '';
+    document.getElementById('fDeudaServ').value = '';
+    document.getElementById('fDeudaMP').value = '';
+    document.getElementById('fAds').value = '';
+    document.getElementById('fMkt').value = '';
+    document.getElementById('fCorp').value = '';
     document.getElementById('modalOverlay').classList.add('active'); 
 }
 function closeModal() { document.getElementById('modalOverlay').classList.remove('active'); }
