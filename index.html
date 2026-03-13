@@ -162,17 +162,17 @@
     <div class="modal">
         <h2 style="font-size:1.2rem; margin-bottom:4px;">Carga Semanal</h2>
         <div class="form-grid" style="margin-top:24px;">
-            <div class="form-group"><label>Banco Cta Cte</label><input type="number" id="fBanco"></div>
-            <div class="form-group"><label>Saldo MP</label><input type="number" id="fMP"></div>
-            <div class="form-group"><label>Efectivo Caja</label><input type="number" id="fCaja"></div>
-            <div class="form-group"><label>Inversiones</label><input type="number" id="fInv"></div>
-            <div class="form-group"><label>Gastos Operativos (Fijos)</label><input type="number" id="fOps"></div>
-            <div class="form-group"><label>Proveedores</label><input type="number" id="fDeudaProv"></div>
-            <div class="form-group"><label>Servicios</label><input type="number" id="fDeudaServ"></div>
-            <div class="form-group"><label>Mercado Pago Créditos</label><input type="number" id="fDeudaMP"></div>
-            <div class="form-group"><label>Inversión Ads</label><input type="number" id="fAds"></div>
-            <div class="form-group"><label>Costo Agencia/Marketing</label><input type="number" id="fMkt"></div>
-            <div class="form-group"><label>Ventas Corporativas</label><input type="number" id="fCorp"></div>
+            <div class="form-group"><label>Banco Cta Cte</label><input type="text" inputmode="decimal" oninput="formatLocalInput(this)" id="fBanco"></div>
+            <div class="form-group"><label>Saldo MP</label><input type="text" inputmode="decimal" oninput="formatLocalInput(this)" id="fMP"></div>
+            <div class="form-group"><label>Efectivo Caja</label><input type="text" inputmode="decimal" oninput="formatLocalInput(this)" id="fCaja"></div>
+            <div class="form-group"><label>Inversiones</label><input type="text" inputmode="decimal" oninput="formatLocalInput(this)" id="fInv"></div>
+            <div class="form-group"><label>Gastos Operativos (Fijos)</label><input type="text" inputmode="decimal" oninput="formatLocalInput(this)" id="fOps"></div>
+            <div class="form-group"><label>Proveedores</label><input type="text" inputmode="decimal" oninput="formatLocalInput(this)" id="fDeudaProv"></div>
+            <div class="form-group"><label>Servicios</label><input type="text" inputmode="decimal" oninput="formatLocalInput(this)" id="fDeudaServ"></div>
+            <div class="form-group"><label>Mercado Pago Créditos</label><input type="text" inputmode="decimal" oninput="formatLocalInput(this)" id="fDeudaMP"></div>
+            <div class="form-group"><label>Inversión Ads</label><input type="text" inputmode="decimal" oninput="formatLocalInput(this)" id="fAds"></div>
+            <div class="form-group"><label>Costo Agencia/Marketing</label><input type="text" inputmode="decimal" oninput="formatLocalInput(this)" id="fMkt"></div>
+            <div class="form-group"><label>Ventas Corporativas</label><input type="text" inputmode="decimal" oninput="formatLocalInput(this)" id="fCorp"></div>
         </div>
         <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:32px;">
             <button class="btn" onclick="closeModal()">Cancelar</button>
@@ -198,11 +198,28 @@ const LOCALE = 'es-AR', CUR = 'ARS';
 let currentData = null, charts = {};
 
 function fmt(v, type='cur') {
-    if(type==='cur') return new Intl.NumberFormat(LOCALE,{style:'currency',currency:CUR,minimumFractionDigits:0,maximumFractionDigits:0}).format(v);
-    if(type==='num') return new Intl.NumberFormat(LOCALE).format(v);
-    if(type==='pct') return v.toFixed(1)+'%';
-    if(type==='dec') return v.toFixed(1);
-    return v;
+    if(type === 'pct') return v.toFixed(1) + '%';
+    if(type === 'num') return new Intl.NumberFormat(LOCALE).format(Math.round(Math.abs(v)));
+    if(type === 'dec') return new Intl.NumberFormat(LOCALE, {maximumFractionDigits:1}).format(v);
+    return new Intl.NumberFormat(LOCALE, { style: 'currency', currency: CUR, maximumFractionDigits:0 }).format(v);
+}
+
+function formatLocalInput(el) {
+    let raw = el.value.replace(/[^0-9,]/g, ''); // Permitir solo números y comas
+    if(!raw) { el.value = ''; return; }
+    
+    let parts = raw.split(',');
+    let intPart = parts[0];
+    
+    if(intPart !== '') {
+        intPart = parseInt(intPart, 10).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    }
+    
+    if(parts.length > 1) {
+        el.value = intPart + ',' + parts[1].substring(0, 2); // Hasta 2 decimales
+    } else {
+        el.value = intPart;
+    }
 }
 function formatDDMMAA(isoString) {
     if(!isoString) return '';
@@ -520,7 +537,12 @@ function openInfoMetric(idx, gId) {
 function closeInfoModal() { document.getElementById('infoOverlay').classList.remove('active'); }
 async function saveData() {
     document.getElementById('btnSave').innerText = 'Guardando...';
-    const v = (id) => Number(document.getElementById(id).value) || 0;
+    const v = (id) => {
+        let raw = document.getElementById(id).value;
+        if(!raw) return 0;
+        let p = raw.replace(/\./g, '').replace(',', '.');
+        return Number(p) || 0;
+    };
     const p = new URLSearchParams({
         action: 'write', bancoCuenta: v('fBanco'), saldoMP: v('fMP'), efectivoCaja: v('fCaja'), inversiones: v('fInv'), gastosOperativos: v('fOps'),
         deudaProveedores: v('fDeudaProv'), deudaServicios: v('fDeudaServ'), deudaMP: v('fDeudaMP'),
