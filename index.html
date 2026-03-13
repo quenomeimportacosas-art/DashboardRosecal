@@ -82,9 +82,15 @@
 
         /* Table Styles */
         .simple-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .simple-table thead { position: sticky; top: 0; background: #fff; z-index: 5; }
         .simple-table th { text-align: left; padding: 12px; border-bottom: 1px solid var(--border); color: var(--text-sec); font-weight: 500; font-size: 12px; }
         .simple-table td { padding: 12px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
         .simple-table tr.paid { opacity: 0.5; }
+        
+        .table-scroll { max-height: 400px; overflow-y: auto; border: 1px solid var(--border); border-radius: 4px; }
+        .table-scroll::-webkit-scrollbar { width: 6px; }
+        .table-scroll::-webkit-scrollbar-track { background: transparent; }
+        .simple-table::-webkit-scrollbar-thumb { background: #ddd; border-radius: 10px; }
 
         .status-select { padding: 4px 8px; border-radius: 4px; border: 1px solid transparent; font-size: 12px; font-weight: 500; cursor: pointer; outline: none; }
         .status-pending { background: var(--warning-bg); color: var(--warning); }
@@ -186,14 +192,8 @@
                 </div>
             </div>
             
-            <div class="accordion" id="riskAccordion">
-                <div class="accordion-header" onclick="this.parentElement.classList.toggle('open')">
-                    <span style="font-size: 13px; font-weight: 500;">Ver próximos</span>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
-                </div>
-                <div class="accordion-content" id="riskUpcomingList">
-                    <!-- Items will be injected here -->
-                </div>
+            <div style="margin-top: 16px; text-align: right;">
+                <button class="btn" style="padding: 6px 14px; font-size: 12px;" onclick="openUpcomingModal()">Ver próximos</button>
             </div>
         </div>
 
@@ -204,7 +204,7 @@
                 <button class="chip" onclick="filterRiskTable('VENCIDO', this)">Vencidos</button>
                 <button class="chip" onclick="filterRiskTable('PAGADO', this)">Pagados</button>
             </div>
-            <div style="overflow-x: auto;">
+            <div class="table-scroll">
                 <table class="simple-table">
                     <thead>
                         <tr>
@@ -537,8 +537,8 @@ function renderRiskWidget(d1, caja) {
     };
 
     // TAB 1: RESUMEN
-    // Filtrar: No pagados, ordenados por fecha
-    const pendingList = cheques.filter(c => c.estado !== 'PAGADO')
+    // Filtrar: No pagados Y fecha >= hoy, ordenados por fecha
+    const pendingList = cheques.filter(c => c.estado !== 'PAGADO' && getDays(c.vencimiento) >= 0)
         .sort((a,b) => new Date(a.vencimiento) - new Date(b.vencimiento));
 
     if(pendingList.length > 0) {
@@ -558,31 +558,38 @@ function renderRiskWidget(d1, caja) {
             document.getElementById('riskAfterSub').innerText = `${fmtDays(getDays(second.vencimiento))} • ${second.proveedor}`;
         } else {
             document.getElementById('riskAfterVal').innerText = '--';
-            document.getElementById('riskAfterSub').innerText = 'No hay más pendientes';
+            document.getElementById('riskAfterSub').innerText = 'No hay más futuros';
         }
     } else {
         ['riskNextVal','riskBoxStatus','riskAfterVal'].forEach(id => document.getElementById(id).innerText = '--');
-        ['riskNextSub','riskBoxSub','riskAfterSub'].forEach(id => document.getElementById(id).innerText = 'Todo al día');
+        ['riskNextSub','riskBoxSub','riskAfterSub'].forEach(id => document.getElementById(id).innerText = 'Nada futuro');
     }
 
-    // Acordeon: Fecha >= Hoy y No Pagado
-    const upcoming = pendingList.filter(c => getDays(c.vencimiento) >= 0);
-    document.getElementById('riskUpcomingList').innerHTML = upcoming.map(c => `
-        <div class="accordion-item">
-            <div>
-                <span style="font-weight:500;">${c.proveedor}</span>
-                <span style="color:var(--text-muted); margin-left:8px;">${formatDDMMAA(c.vencimiento)}</span>
-            </div>
-            <div style="display:flex; align-items:center; gap:12px;">
-                <span class="badge-small" style="background:var(--warning-bg); color:var(--warning);">${fmtDays(getDays(c.vencimiento))}</span>
-                <span style="font-weight:500;">${fmt(c.monto)}</span>
-            </div>
-        </div>
-    `).join('') || '<div style="padding:16px; font-size:12px; color:var(--text-muted);">No hay cheques próximos.</div>';
+    // Cache list for modal
+    window.upcomingCheques = pendingList;
 
     // TAB 2: GESTIONAR
     window.allCheques = cheques; // Cache for filtering
     renderRiskTable(cheques);
+}
+
+function openUpcomingModal() {
+    const list = window.upcomingCheques || [];
+    const html = list.map(c => `
+        <div class="accordion-item" style="border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; padding: 12px 16px;">
+            <div>
+                <div style="font-weight:600;">${c.proveedor}</div>
+                <div style="color:var(--text-muted); font-size: 12px;">${formatDDMMAA(c.vencimiento)} • Cheque Nº: ${c.numero}</div>
+            </div>
+            <div style="text-align: right;">
+                <div class="badge-small" style="background:var(--warning-bg); color:var(--warning); margin-bottom: 4px;">En ${Math.round((new Date(c.vencimiento + 'T12:00:00') - new Date().setHours(0,0,0,0))/(1000*60*60*24))} días</div>
+                <div style="font-weight:600;">${fmt(c.monto)}</div>
+            </div>
+        </div>
+    `).join('') || '<div style="padding:16px; color:var(--text-muted); text-align:center;">No hay cheques futuros pendientes.</div>';
+    
+    document.getElementById('upcomingListContainer').innerHTML = html;
+    document.getElementById('upcomingModal').classList.add('active');
 }
 
 function renderRiskTable(list) {
