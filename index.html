@@ -746,7 +746,12 @@ function updateChartView() {
     if(mode === 'diario') {
         charts.main = new Chart(document.getElementById('chartMain'), {
             type: 'line', data: {
-                labels: cData.daysArr.map(d => formatDDMMAA(d)),
+                labels: cData.daysArr.map(d => {
+                    const dias = ['Do','Lu','Ma','Mi','Ju','Vi','Sa'];
+                    const parts = d.split('-');
+                    const dt = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+                    return dias[dt.getDay()] + ' ' + formatDDMMAA(d);
+                }),
                 datasets: [{ label:'Facturación Diaria MTD', data:cData.dailyData, borderColor:'#18181b', backgroundColor:'rgba(24,24,27,0.05)', fill:true, borderWidth:2, tension:0.2, pointRadius:4, pointHoverRadius:6 }]
             }, options: { responsive:true, maintainAspectRatio:false, plugins:{ tooltip:ttip, legend:{display:false} }, scales:{ x:{grid:{display:false}}, y:{grid:{color:'#f4f4f5'}, ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'k'}} } }
         });
