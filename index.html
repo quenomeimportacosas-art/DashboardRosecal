@@ -530,24 +530,38 @@ function coreLogic(d1, d2, m1) {
     const prevDeudaMes = prevStats.brutas - (prevStats.pCobradosVal||0);
     const prevDso = prevStats.brutas > 0 ? Math.round(dayLimit * (prevDeudaMes / prevStats.brutas)) : 0;
     
-    // DSO por condición: calcular días promedio pendientes por tipo
-    const allPending = (d1.pendingAll || d1.orders || []).filter(o => o.status !== 'COBRADO' && o.status !== 'ANULADO');
-    const dsoByCondicion = {};
-    allPending.forEach(o => {
+    // DSO por condición — MES ACTUAL (solo orders del mes)
+    const currentMonthPending = (d1.orders || []).filter(o => o.status !== 'COBRADO' && o.status !== 'ANULADO');
+    const dsoByCondMes = {};
+    currentMonthPending.forEach(o => {
         const cond = o.condicion || 'SIN DATO';
-        if (!dsoByCondicion[cond]) dsoByCondicion[cond] = { totalDays: 0, totalAmount: 0, count: 0 };
+        if (!dsoByCondMes[cond]) dsoByCondMes[cond] = { totalDays: 0, totalAmount: 0, count: 0 };
         const diffDays = Math.floor((today - new Date(o.date)) / (1000*60*60*24));
-        dsoByCondicion[cond].totalDays += diffDays * o.amount; // ponderado por monto
-        dsoByCondicion[cond].totalAmount += o.amount;
-        dsoByCondicion[cond].count++;
+        dsoByCondMes[cond].totalDays += diffDays * o.amount;
+        dsoByCondMes[cond].totalAmount += o.amount;
+        dsoByCondMes[cond].count++;
     });
     
-    // Build DSO breakdown HTML
-    const condColors = { 'CONTRA REEMBOLSO': '#d4a373', 'MOTO MENSAJERIA': '#637c6c', 'MOTO MENSAJERÍA': '#637c6c' };
-    let dsoBreakdownHtml = '';
-    const condEntries = Object.entries(dsoByCondicion).sort((a,b) => b[1].totalAmount - a[1].totalAmount);
-    if (condEntries.length > 0) {
-        const lines = condEntries.map(([cond, data]) => {
+    // DSO por condición — HISTÓRICO (todos los meses)
+    const allPending = (d1.pendingAll || d1.orders || []).filter(o => o.status !== 'COBRADO' && o.status !== 'ANULADO');
+    const dsoByCondHist = {};
+    allPending.forEach(o => {
+        const cond = o.condicion || 'SIN DATO';
+        if (!dsoByCondHist[cond]) dsoByCondHist[cond] = { totalDays: 0, totalAmount: 0, count: 0 };
+        const diffDays = Math.floor((today - new Date(o.date)) / (1000*60*60*24));
+        dsoByCondHist[cond].totalDays += diffDays * o.amount;
+        dsoByCondHist[cond].totalAmount += o.amount;
+        dsoByCondHist[cond].count++;
+    });
+    
+    // Guardar en window para toggle
+    window._dsoData = { mes: dsoByCondMes, hist: dsoByCondHist, dsoEstimado };
+    
+    // Build DSO HTML con dropdown
+    const condColors = { 'CONTRA REEMBOLSO': '#d4a373', 'MOTO COBRA TRANSFERENCIA': '#637c6c', 'MOTO COBRA EFECTIVO': '#637c6c' };
+    
+    function buildDsoLines(entries) {
+        return entries.map(([cond, data]) => {
             const avgDays = data.totalAmount > 0 ? Math.round(data.totalDays / data.totalAmount) : 0;
             const color = condColors[cond] || 'var(--text-sec)';
             return `<div style="display:flex; justify-content:space-between; align-items:center; padding:3px 0;">
@@ -555,13 +569,25 @@ function coreLogic(d1, d2, m1) {
                 <span style="font-weight:700; font-size:0.85rem;">${avgDays}d <span style="font-weight:400; color:var(--text-muted); font-size:0.72rem;">(${data.count} ped. · ${fmt(data.totalAmount)})</span></span>
             </div>`;
         }).join('');
-        dsoBreakdownHtml = `<div style="display:flex; flex-direction:column; gap:2px;">
-            <div style="font-weight:700; font-size:1.3rem; margin-bottom:4px;">${dsoEstimado} días</div>
-            ${lines}
-        </div>`;
-    } else {
-        dsoBreakdownHtml = `<div style="font-weight:700; font-size:1.3rem;">${dsoEstimado} días</div>`;
     }
+    
+    const mesEntries = Object.entries(dsoByCondMes).sort((a,b) => b[1].totalAmount - a[1].totalAmount);
+    const histEntries = Object.entries(dsoByCondHist).sort((a,b) => b[1].totalAmount - a[1].totalAmount);
+    const condEntries = mesEntries; // default: mes actual
+    
+    const dsoBreakdownHtml = `<div style="display:flex; flex-direction:column; gap:2px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <span style="font-weight:700; font-size:1.3rem;">${dsoEstimado} días</span>
+            <select id="dsoViewMode" onchange="toggleDsoView()" style="padding:2px 6px; font-size:0.7rem; border-radius:4px; border:1px solid var(--border); background:var(--bg-body); cursor:pointer;">
+                <option value="mes">Este mes</option>
+                <option value="hist">Histórico</option>
+            </select>
+        </div>
+        <div id="dsoLines">${buildDsoLines(mesEntries)}</div>
+    </div>`;
+    
+    // Guardar líneas pre-renderizadas
+    window._dsoLines = { mes: buildDsoLines(mesEntries), hist: buildDsoLines(histEntries) };
 
     // ── 2.3 Aging de deuda ──
     // Clasificar TODOS los pedidos pendientes (de cualquier mes) por antigüedad
@@ -611,7 +637,7 @@ function coreLogic(d1, d2, m1) {
         { label: 'Caja Actual (Mes en curso)', val: cajaActual, prev: 0, t: 'cur', hideDelta:true,
           info: { desc:'Dinero en tiempo real ingresado en Datos Manuales.', calc:`Banco: ${fmt(m.bancoCuenta||0)}<br>MP: ${fmt(m.saldoMP||0)}<br>Efectivo: ${fmt(m.efectivoCaja||0)}<br>Inversiones: ${fmt(m.inversiones||0)}<hr/>Total: ${fmt(cajaActual)}`} },
         { label: 'DSO (Días de Cobro)', val: dsoBreakdownHtml, prev: 0, t: 'raw', hideDelta:true,
-          info: { desc:'Días promedio de cobro ponderado por monto. Desglosado por condición de pedido (Contra Reembolso, Moto Mensajería, etc).', calc:`DSO General: ${dsoEstimado} días<br>Deuda pendiente: ${fmt(deudaMes)}<br>Facturado: ${fmt(curStats.brutas)}<hr/>${condEntries.map(([c,d]) => c + ': ' + Math.round(d.totalDays/d.totalAmount) + ' días (' + d.count + ' pedidos, ' + fmt(d.totalAmount) + ')').join('<br>')}`} },
+          info: { desc:'Días promedio de cobro por condición. Toggle entre mes actual e histórico.', calc:`DSO General del mes: ${dsoEstimado} días<br>Deuda del mes: ${fmt(deudaMes)}<br>Facturado: ${fmt(curStats.brutas)}<hr/>Pedidos pendientes mes: ${currentMonthPending.length}<br>Pedidos pendientes histórico: ${allPending.length}`} },
         { label: 'Inversión sobre Facturado', val: invVsVentas, prev: 0, t: 'pct', hideDelta:true,
           info: { desc:'Mide cuán eficiente es tu gasto en pauta. Recomendado <= 10%.', calc:`Inversión en Publicidad: ${fmt(impAds)}<br>Total Facturado (Bruto): ${fmt(curStats.brutas)}<hr/>Proporción = ${fmt(invVsVentas,'dec')}%` } },
         { label: 'Margen Neto', val: margenNeto, prev: 0, t: 'pct', hideDelta:true,
@@ -921,6 +947,14 @@ async function saveData() {
         setTimeout(()=>renderDashboard(), 1500);
     } catch(e) { alert('Error al guardar.'); }
     document.getElementById('btnSave').innerText = 'Guardar Datos';
+}
+
+function toggleDsoView() {
+    const mode = document.getElementById('dsoViewMode').value;
+    const el = document.getElementById('dsoLines');
+    if (el && window._dsoLines) {
+        el.innerHTML = window._dsoLines[mode] || '';
+    }
 }
 
 function updateChartView() {
