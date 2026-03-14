@@ -80,14 +80,24 @@ function syncImportesACalculoGanancias() {
   }
   
   // --- Cargar mapa (Marca temporal -> row)
+  // Mapa primario: ISO completo (con hora)
+  // Mapa secundario: solo fecha (para matchear filas que perdieron la hora)
   let calcData = [];
   if (calcLastRowInA >= 2) {
     calcData = shCalc.getRange(2, 1, calcLastRowInA - 1, numDataCols).getValues();
   }
   const tsToRow = new Map();
+  const dateOnlyToRows = new Map(); // fecha sin hora → [rows] (puede haber varios por día)
   for (let r = 0; r < calcData.length; r++) {
-    const ts = normalizeKeyCalc_(calcData[r][idxTsCalc]);
-    if (ts) tsToRow.set(ts, r + 2);
+    const raw = calcData[r][idxTsCalc];
+    const ts = normalizeKeyCalc_(raw);
+    if (ts) {
+      tsToRow.set(ts, r + 2);
+      // Extraer solo fecha para fallback
+      const dateOnly = ts.substring(0, 10); // "2026-02-17"
+      if (!dateOnlyToRows.has(dateOnly)) dateOnlyToRows.set(dateOnly, []);
+      dateOnlyToRows.get(dateOnly).push({ row: r + 2, importe: calcData[r][idxImpFactCalc] });
+    }
   }
   
   // --- Preparar escrituras
@@ -123,8 +133,30 @@ function syncImportesACalculoGanancias() {
         telefono: telefonoFinal
       });
     } else {
-      const row = [tsRaw, importeFinal, statusFinal, impRaw, costoEnvioFinal, costoBeatoFinal, telefonoFinal];
-      appends.push(row);
+      // Fallback: buscar por fecha + importe (para filas que perdieron la hora)
+      const dateOnly = tsKey.substring(0, 10);
+      const candidates = dateOnlyToRows.get(dateOnly) || [];
+      let fallbackRow = null;
+      for (let c = 0; c < candidates.length; c++) {
+        if (Math.round(candidates[c].importe) === Math.round(importeFinal)) {
+          fallbackRow = candidates[c].row;
+          break;
+        }
+      }
+      if (fallbackRow) {
+        updates.push({
+          row: fallbackRow,
+          importeFact: importeFinal,
+          status: statusFinal,
+          orig: impRaw,
+          costoEnvio: costoEnvioFinal,
+          costoBeato: costoBeatoFinal,
+          telefono: telefonoFinal
+        });
+      } else {
+        const row = [tsRaw, importeFinal, statusFinal, impRaw, costoEnvioFinal, costoBeatoFinal, telefonoFinal];
+        appends.push(row);
+      }
     }
   }
   
@@ -191,10 +223,17 @@ function getLastRowInColumnCalc_(sh, colNum) {
 }
 function normalizeKeyCalc_(v) {
   if (v === null || v === undefined || v === '') return '';
+  // Si es Date, usar ISO completo
   if (Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v.getTime())) {
     return v.toISOString();
   }
-  return String(v).trim();
+  // Si es string con formato fecha, intentar parsear a Date para normalizar
+  var s = String(v).trim();
+  var parsed = new Date(s);
+  if (!isNaN(parsed.getTime())) {
+    return parsed.toISOString();
+  }
+  return s;
 }
 function parseImportePrimeroCalc_(input) {
   if (input === null || input === undefined) return null;
