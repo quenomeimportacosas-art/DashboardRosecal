@@ -613,16 +613,17 @@ function coreLogic(d1, d2, m1) {
     const cumpleRitmo = promDiarioReal >= factDiariaNecesaria;
     
     // Ahorro: caja actual vs deuda total de cheques
-    const faltanteAhorro = totalChequesTotal - cajaActual;
-    const ahorroOk = cajaActual >= totalChequesTotal;
+    // Ahorro: caja TOTAL (acumulada) vs deuda total de cheques
+    const faltanteAhorro = totalChequesTotal - cajaAcumulada;
+    const ahorroOk = cajaAcumulada >= totalChequesTotal;
     const ahorroDiarioNecesario = diasRestantes > 0 && faltanteAhorro > 0 ? faltanteAhorro / diasRestantes : 0;
     
-    // Cobertura del mes: caja vs cheques del mes
+    // Cobertura del mes: caja ACTUAL vs cheques del mes
     const coberturaMes = totalChequesPendMes > 0 ? (cajaActual / totalChequesPendMes * 100) : 100;
     const coberturaMesColor = coberturaMes >= 100 ? '#637c6c' : coberturaMes >= 70 ? '#d4a373' : '#b56b6b';
     
-    // Cobertura total: caja vs todos los cheques
-    const coberturaTotal = totalChequesTotal > 0 ? (cajaActual / totalChequesTotal * 100) : 100;
+    // Cobertura total: caja TOTAL (acumulada) vs todos los cheques
+    const coberturaTotal = totalChequesTotal > 0 ? (cajaAcumulada / totalChequesTotal * 100) : 100;
     const coberturaTotalColor = coberturaTotal >= 100 ? '#637c6c' : coberturaTotal >= 50 ? '#d4a373' : '#b56b6b';
     
     // Ritmo facturación: badge visual
@@ -635,8 +636,8 @@ function coreLogic(d1, d2, m1) {
     // Ahorro badge
     const ahorroHtml = `<div style="display:flex; flex-direction:column; gap:6px;">
         <div style="font-weight:700; font-size:1.3rem; color:${ahorroOk ? '#637c6c' : '#b56b6b'};">${ahorroOk ? '✓ CUBIERTO' : fmt(faltanteAhorro)}</div>
-        ${!ahorroOk ? `<div style="font-size:0.75rem; color:var(--text-muted);">Ahorrá ${fmt(ahorroDiarioNecesario)}/día para llegar</div>` : '<div style="font-size:0.75rem; color:var(--text-muted);">Tu caja cubre toda la deuda</div>'}
-        <div style="font-size:0.75rem; color:var(--text-muted);">Caja: ${fmt(cajaActual)} vs Deuda: ${fmt(totalChequesTotal)}</div>
+        ${!ahorroOk ? `<div style="font-size:0.75rem; color:var(--text-muted);">Ahorrá ${fmt(ahorroDiarioNecesario)}/día para llegar</div>` : '<div style="font-size:0.75rem; color:var(--text-muted);">Tu caja total cubre toda la deuda</div>'}
+        <div style="font-size:0.75rem; color:var(--text-muted);">Caja Total: ${fmt(cajaAcumulada)} vs Deuda: ${fmt(totalChequesTotal)}</div>
     </div>`;
 
     drawGrid('rowCompromiso', [
@@ -647,11 +648,11 @@ function coreLogic(d1, d2, m1) {
         { label: 'Ritmo de Facturación', val: ritmoHtml, prev: 0, t: 'raw', hideDelta:true,
           info: { desc:'¿Tu facturación diaria alcanza para cubrir los cheques del mes?', calc:`Cheques del mes: ${fmt(totalChequesPendMes)}<br>Días restantes: ${diasRestantes}<br>Necesitás: ${fmt(factDiariaNecesaria)}/día<hr/>Facturado MTD: ${fmt(curStats.brutas)}<br>Días transcurridos: ${dayLimit}<br>Promedio real: ${fmt(promDiarioReal)}/día<hr/>${cumpleRitmo ? '✓ Vas bien, el ritmo actual cubre los cheques' : '✗ Necesitás facturar más para cubrir los cheques del mes'}`} },
         { label: 'Cobertura de Caja (Mes)', val: coberturaMes, prev: 0, t: 'pct', hideDelta:true,
-          info: { desc:'Cuánto de los cheques del mes podés cubrir con tu caja actual.', calc:`Caja actual: ${fmt(cajaActual)}<br>Cheques del mes: ${fmt(totalChequesPendMes)}<hr/>Cobertura = ${fmt(coberturaMes,'dec')}%`} },
+          info: { desc:'Cuánto de los cheques del mes podés cubrir con tu caja actual (mes en curso).', calc:`Caja Actual: ${fmt(cajaActual)}<br>Cheques del mes: ${fmt(totalChequesPendMes)}<hr/>Cobertura = ${fmt(coberturaMes,'dec')}%`} },
         { label: 'Faltante para Deuda Total', val: ahorroHtml, prev: 0, t: 'raw', hideDelta:true,
-          info: { desc:'Cuánto te falta ahorrar para cubrir todos los cheques pendientes.', calc:`Caja actual: ${fmt(cajaActual)}<br>Deuda total cheques: ${fmt(totalChequesTotal)}<hr/>Diferencia: ${ahorroOk ? 'Cubierto, sobran ' + fmt(cajaActual - totalChequesTotal) : 'Faltan ' + fmt(faltanteAhorro)}<br>${!ahorroOk && diasRestantes > 0 ? 'Ahorro diario necesario: ' + fmt(ahorroDiarioNecesario) : ''}`} },
+          info: { desc:'Cuánto te falta ahorrar para cubrir todos los cheques. Usa Caja Total (acumulada).', calc:`Caja Total: ${fmt(cajaAcumulada)}<br>Deuda total cheques: ${fmt(totalChequesTotal)}<hr/>Diferencia: ${ahorroOk ? 'Cubierto, sobran ' + fmt(cajaAcumulada - totalChequesTotal) : 'Faltan ' + fmt(faltanteAhorro)}<br>${!ahorroOk && diasRestantes > 0 ? 'Ahorro diario necesario: ' + fmt(ahorroDiarioNecesario) : ''}`} },
         { label: 'Cobertura Total', val: coberturaTotal, prev: 0, t: 'pct', hideDelta:true,
-          info: { desc:'Tu caja actual vs toda la deuda de cheques.', calc:`Caja: ${fmt(cajaActual)}<br>Deuda total: ${fmt(totalChequesTotal)}<hr/>Cobertura = ${fmt(coberturaTotal,'dec')}%`} }
+          info: { desc:'Tu Caja Total (acumulada) vs toda la deuda de cheques.', calc:`Caja Total: ${fmt(cajaAcumulada)}<br>Deuda total: ${fmt(totalChequesTotal)}<hr/>Cobertura = ${fmt(coberturaTotal,'dec')}%`} }
     ], 'repeat(3, 1fr)');
 
     // ── 2.2 DSO estimado por Condición de Pedido ──
