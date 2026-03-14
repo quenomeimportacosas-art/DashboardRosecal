@@ -490,12 +490,8 @@ function coreLogic(d1, d2, m1) {
     
     const costoLogistica = sl.costoLogistica || 0;
     
-    // Margen Bruto: Ventas - Cheques del mes - Logística - Publicidad (rentabilidad de la operación)
-    const gananciaBruta = curStats.brutas - costoChequesDelMes - costoLogistica - impAds;
-    const margenBruto = curStats.brutas > 0 ? (gananciaBruta / curStats.brutas) * 100 : 0;
-    
-    // Margen Neto: Ganancia bruta - Marketing - Gastos fijos (publicidad ya incluida en bruto)
-    const gananciaNeta = gananciaBruta - gMkt - ops;
+    // Margen Neto: Ventas - Cheques - Logística - Publicidad - Marketing - Ops
+    const gananciaNeta = curStats.brutas - costoChequesDelMes - costoLogistica - impAds - gMkt - ops;
     const margenNeto = curStats.brutas > 0 ? (gananciaNeta / curStats.brutas) * 100 : 0;
 
     const burnRate = ops + impAds + gMkt + costoChequesDelMes + costoLogistica;
@@ -587,10 +583,8 @@ function coreLogic(d1, d2, m1) {
           info: { desc:'Estimación de cuántos días tarda en cobrarse lo facturado. Menor es mejor.', calc:`Deuda pendiente: ${fmt(deudaMes)}<br>Facturado total: ${fmt(curStats.brutas)}<br>Días transcurridos: ${diasTranscurridos}<hr/>DSO ≈ ${dsoEstimado} días${prevDso > 0 ? '<br>Mes anterior: ' + prevDso + ' días' : ''}`} },
         { label: 'Inversión sobre Facturado', val: invVsVentas, prev: 0, t: 'pct', hideDelta:true,
           info: { desc:'Mide cuán eficiente es tu gasto en pauta. Recomendado <= 10%.', calc:`Inversión en Publicidad: ${fmt(impAds)}<br>Total Facturado (Bruto): ${fmt(curStats.brutas)}<hr/>Proporción = ${fmt(invVsVentas,'dec')}%` } },
-        { label: 'Margen Bruto', val: margenBruto, prev: 0, t: 'pct', hideDelta:true,
-          info: { desc:'Rentabilidad de la operación: Ventas menos mercadería (cheques), logística y publicidad.', calc:`Ventas Brutas: ${fmt(curStats.brutas)}<br>- Cheques del Mes (mercadería): ${fmt(costoChequesDelMes)}<br>- Logística: ${fmt(costoLogistica)}<br>- Publicidad: ${fmt(impAds)}<hr/>Ganancia Bruta = ${fmt(gananciaBruta)}<br>Margen Bruto = ${fmt(margenBruto,'dec')}%` } },
         { label: 'Margen Neto', val: margenNeto, prev: 0, t: 'pct', hideDelta:true,
-          info: { desc:'Rentabilidad final. Ganancia bruta menos marketing y gastos operativos.', calc:`Ganancia Bruta: ${fmt(gananciaBruta)}<br>- Marketing: ${fmt(gMkt)}<br>- Gastos Operativos: ${fmt(ops)}<hr/>Ganancia Neta = ${fmt(gananciaNeta)}<br>Margen Neto = ${fmt(margenNeto,'dec')}%` } },
+          info: { desc:'Rentabilidad real: Ventas menos todos los costos del mes.', calc:`Ventas Brutas: ${fmt(curStats.brutas)}<br>- Cheques del Mes (mercadería): ${fmt(costoChequesDelMes)}<br>- Logística: ${fmt(costoLogistica)}<br>- Publicidad: ${fmt(impAds)}<br>- Marketing: ${fmt(gMkt)}<br>- Gastos Operativos: ${fmt(ops)}<hr/>Ganancia Neta = ${fmt(gananciaNeta)}<br>Margen Neto = ${fmt(margenNeto,'dec')}%` } },
         { label: 'Deuda por Antigüedad', val: agingBarHtml, prev: 0, t: 'raw', hideDelta:true,
           info: { desc:'Deuda pendiente clasificada por antigüedad. La deuda vieja (30+ días) es la más riesgosa.', calc:`0-7 días: ${fmt(agingBuckets['0-7 días'])}<br>8-15 días: ${fmt(agingBuckets['8-15 días'])}<br>16-30 días: ${fmt(agingBuckets['16-30 días'])}<br>30+ días: ${fmt(agingBuckets['30+ días'])}<hr/>Total pendiente: ${fmt(totalPending)}`} }
     ], 'repeat(3, 1fr)');
