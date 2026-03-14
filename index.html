@@ -259,6 +259,23 @@
     <div class="dashboard-section" data-section="panorama">
         <div class="section-header"><span class="drag-handle" style="display:none; cursor:grab; margin-right:8px; color:var(--text-muted);">⠿</span>Panorama Principal</div>
         <div class="metrics-grid" id="rowPanorama"></div>
+        
+        <!-- Facturación y Ritmo -->
+        <div class="metrics-grid" id="rowCompromiso" style="margin-top:0;"></div>
+        
+        <!-- Evolución del Negocio inline -->
+        <div class="metric-card" style="padding:24px; margin-bottom:16px;">
+            <div class="metric-title" style="margin-bottom:24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                Evolución del Negocio
+                <select id="chartViewMode2" onchange="document.getElementById('chartViewMode').value=this.value; updateChartView();" style="padding:4px 8px; font-size:0.8rem; border-radius:4px; border:1px solid var(--border); background:var(--bg-body);">
+                    <option value="diario">Mensual (Diaria)</option>
+                    <option value="acumulado">Acumulado MTD</option>
+                    <option value="mensual">Histórico (Mes a Mes)</option>
+                </select>
+            </div>
+            <div class="chart-container" style="height:250px;"><canvas id="chartMainPanorama"></canvas></div>
+            <div id="dailyTicketAvgPanorama" style="margin-top:12px; padding:10px 14px; background:var(--bg-body); border-radius:8px; border:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; font-size:0.82rem; flex-wrap:wrap; gap:6px;"></div>
+        </div>
     </div>
 
     <!-- Modal: Cheques del Mes -->
@@ -297,10 +314,6 @@
     </div>
 
     <!-- Compromiso del Mes -->
-    <div class="dashboard-section" data-section="compromiso">
-        <div class="section-header"><span class="drag-handle" style="display:none; cursor:grab; margin-right:8px; color:var(--text-muted);">⠿</span>Compromiso del Mes</div>
-        <div class="metrics-grid" id="rowCompromiso"></div>
-    </div>
 
     <!-- Primera Fila: Salud -->
     <div class="dashboard-section" data-section="salud">
@@ -618,11 +631,9 @@ function coreLogic(d1, d2, m1) {
         <button onclick="openChequesMesModal()" style="margin-top:4px; padding:4px 10px; border-radius:4px; border:1px solid var(--border); background:var(--bg-body); color:var(--text-main); font-size:0.72rem; font-weight:500; cursor:pointer; width:fit-content;">Ver cheques</button>
     </div>`;
     
-    const postMesColor = cajaPostMes >= 0 ? '#637c6c' : '#b56b6b';
-    const postMesHtml = `<div style="display:flex; flex-direction:column; gap:4px;">
-        <div style="font-weight:700; font-size:1.5rem; color:${postMesColor};">${fmt(cajaPostMes)}</div>
-        <div style="font-size:0.78rem; color:#637c6c; font-weight:500;">Caja total: ${fmt(cajaAcumulada)}</div>
-        <button onclick="openChequesAllModal()" style="margin-top:4px; padding:4px 10px; border-radius:4px; border:1px solid var(--border); background:var(--bg-body); color:var(--text-main); font-size:0.72rem; font-weight:500; cursor:pointer; width:fit-content;">Ver pr\u00f3ximos cheques</button>
+    const deudaRestanteHtml = `<div style="display:flex; flex-direction:column; gap:4px;">
+        <div style="font-weight:700; font-size:1.5rem;">${fmt(deudaRestante)}</div>
+        <button onclick="openChequesAllModal()" style="margin-top:4px; padding:4px 10px; border-radius:4px; border:1px solid var(--border); background:var(--bg-body); color:var(--text-main); font-size:0.72rem; font-weight:500; cursor:pointer; width:fit-content;">Ver próximos cheques</button>
     </div>`;
     
     drawGrid('rowPanorama', [
@@ -632,8 +643,8 @@ function coreLogic(d1, d2, m1) {
           info: { desc:'Cheques que vencen este mes.', calc:`${chequesPendMesArr.length} cheques<br>Total: ${fmt(totalChequesMes)}`} },
         { label: 'Deuda Total Cheques', val: totalChequesTodo, prev: 0, t: 'cur', hideDelta:true,
           info: { desc:'Todos los cheques pendientes.', calc:`${todosChequesPendArr.length} cheques<br>Total: ${fmt(totalChequesTodo)}`} },
-        { label: 'Despu\u00e9s de Pagar Este Mes', val: postMesHtml, prev: 0, t: 'raw', hideDelta:true,
-          info: { desc:'Caja total menos cheques de este mes.', calc:`Caja Total: ${fmt(cajaAcumulada)}<br>- Cheques mes: ${fmt(totalChequesMes)}<hr/>Queda: ${fmt(cajaPostMes)}<br>Deuda futura: ${fmt(deudaRestante)}`} }
+        { label: 'Deuda Restante', val: deudaRestanteHtml, prev: 0, t: 'raw', hideDelta:true,
+          info: { desc:'Lo que queda de deuda después de pagar los cheques de este mes.', calc:`Deuda total: ${fmt(totalChequesTodo)}<br>- Cheques este mes: ${fmt(totalChequesMes)}<hr/>Restante: ${fmt(deudaRestante)}`} }
     ]);
     
     // Build modal content
@@ -1018,7 +1029,7 @@ function coreLogic(d1, d2, m1) {
 
     /* 4. GRAFICOS */
     const ttip = { backgroundColor:'#18181b', titleColor:'#fff', padding:10, cornerRadius:4, bodyFont:{family:'Inter'} };
-    Object.entries(charts).forEach(([k,c]) => { if(k !== 'pieCobro') c.destroy(); });
+    Object.entries(charts).forEach(([k,c]) => { if(k !== 'pieCobro' && k !== 'mainPanorama') c.destroy(); });
     
     // Reservamos data en window para re-dibujar
     // Generar todos los días del 1 hasta hoy (o fin de mes si es mes pasado)
@@ -1376,8 +1387,13 @@ function toggleDsoView() {
 
 function updateChartView() {
     if(charts.main) charts.main.destroy();
+    if(charts.mainPanorama) charts.mainPanorama.destroy();
     
     const mode = document.getElementById('chartViewMode').value;
+    // Sync selectors
+    const sel2 = document.getElementById('chartViewMode2');
+    if(sel2 && sel2.value !== mode) sel2.value = mode;
+    
     const cData = window._chartData;
     const ttip = { backgroundColor:'#18181b', titleColor:'#fff', padding:10, cornerRadius:4, bodyFont:{family:'Inter'} };
     
@@ -1642,6 +1658,22 @@ function updateChartView() {
             }, options: { responsive:true, maintainAspectRatio:false, plugins:{ tooltip:ttip, legend:{display:true, position:'bottom'} }, scales:{ x:{grid:{display:false}}, y:{grid:{color:'#f4f4f5'}, ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'k'}} } }
         });
     }
+    
+    // Mirror chart to Panorama section
+    const pCanvas = document.getElementById('chartMainPanorama');
+    if (pCanvas && charts.main) {
+        const cfg = charts.main.config;
+        charts.mainPanorama = new Chart(pCanvas, {
+            type: cfg.type,
+            data: JSON.parse(JSON.stringify(cfg.data)),
+            options: JSON.parse(JSON.stringify(cfg.options)),
+            plugins: cfg.plugins || []
+        });
+    }
+    // Mirror ticket avg
+    const srcAvg = document.getElementById('dailyTicketAvg');
+    const dstAvg = document.getElementById('dailyTicketAvgPanorama');
+    if (srcAvg && dstAvg) dstAvg.innerHTML = srcAvg.innerHTML;
 }
 
 function openAllChequesModal() {
