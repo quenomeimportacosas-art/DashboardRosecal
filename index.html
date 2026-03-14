@@ -812,16 +812,26 @@ function coreLogic(d1, d2, m1) {
     });
     const todosLosMeses = Object.keys(chequesPorMes).sort();
     
-    // Simular flujo de caja mes a mes
+    // Generar TODOS los meses desde el actual hasta el último cheque
+    const ultimoMesCheque = todosLosMeses.length > 0 ? todosLosMeses[todosLosMeses.length - 1] : viewingMonth;
+    const allMonths = [];
+    let iterDate = new Date(parseInt(viewingMonth.split('-')[0]), parseInt(viewingMonth.split('-')[1]) - 1, 1);
+    const endDate = new Date(parseInt(ultimoMesCheque.split('-')[0]), parseInt(ultimoMesCheque.split('-')[1]) - 1, 1);
+    while (iterDate <= endDate) {
+        const ym = iterDate.getFullYear() + '-' + String(iterDate.getMonth() + 1).padStart(2, '0');
+        allMonths.push(ym);
+        iterDate.setMonth(iterDate.getMonth() + 1);
+    }
+    
+    // Simular flujo de caja mes a mes (TODOS los meses, no solo con cheques)
     let cajaSimulada = cajaAcumulada;
     const mesesNames = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
     const flujoMeses = [];
     let mesConProblema = null;
     let factNecesariaMax = 0;
     
-    todosLosMeses.forEach((mes, idx) => {
-        const chequesMes = chequesPorMes[mes];
-        // Mes actual: no sumar ganancia (ya está en la caja)
+    allMonths.forEach((mes, idx) => {
+        const chequesMes = chequesPorMes[mes] || 0;
         const esActual = mes === viewingMonth;
         if (!esActual) cajaSimulada += gananciaProyMensual;
         
@@ -830,7 +840,6 @@ function coreLogic(d1, d2, m1) {
         const parts = mes.split('-');
         const mesLabel = mesesNames[parseInt(parts[1])] + ' ' + parts[0].slice(2);
         
-        // Si queda negativo, cuánto extra necesito facturar ese mes
         let factExtra = 0;
         if (cajaSimulada < 0) {
             factExtra = Math.abs(cajaSimulada) / margenDecimal;
