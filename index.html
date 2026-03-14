@@ -600,6 +600,8 @@ function coreLogic(d1, d2, m1) {
     </div>`;
     
     drawGrid('rowPanorama', [
+        { label: 'Caja Total (Ahorro)', val: cajaAcumulada, prev: 0, t: 'cur', hideDelta:true,
+          info: { desc:'Todo el dinero disponible acumulado.', calc:`Banco: ${fmt(m.bancoCuenta||0)}<br>MP: ${fmt(m.saldoMP||0)}<br>Efectivo: ${fmt(m.efectivoCaja||0)}<br>Inversiones: ${fmt(m.inversiones||0)}<hr/>Actual: ${fmt(cajaActual)}<br>+ Anterior: ${fmt(prevCajaActual)}<br>= Total: ${fmt(cajaAcumulada)}`} },
         { label: 'Cheques Este Mes', val: chequesMesHtml, prev: 0, t: 'raw', hideDelta:true,
           info: { desc:'Cheques que vencen este mes.', calc:`${chequesPendMesArr.length} cheques<br>Total: ${fmt(totalChequesMes)}`} },
         { label: 'Deuda Total Cheques', val: totalChequesTodo, prev: 0, t: 'cur', hideDelta:true,
