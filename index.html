@@ -534,18 +534,19 @@ function coreLogic(d1, d2, m1) {
     const prevDso = prevStats.brutas > 0 ? Math.round(dayLimit * (prevDeudaMes / prevStats.brutas)) : 0;
 
     // ── 2.3 Aging de deuda ──
-    // Clasificar pedidos pendientes por antigüedad
-    const agingBuckets = { '0-7 días': 0, '8-15 días': 0, '16-30 días': 0, '30+ días': 0 };
-    const agingColors = { '0-7 días': '#637c6c', '8-15 días': '#d4a373', '16-30 días': '#b56b6b', '30+ días': '#7f1d1d' };
-    const pendingOrders = (d1.orders || []).filter(o => o.status !== 'COBRADO' && o.status !== 'ANULADO');
+    // Clasificar TODOS los pedidos pendientes (de cualquier mes) por antigüedad
+    const agingBuckets = { '0-15 días': 0, '16-30 días': 0, '31-60 días': 0, '60-90 días': 0, '90+ días': 0 };
+    const agingColors = { '0-15 días': '#637c6c', '16-30 días': '#d4a373', '31-60 días': '#b56b6b', '60-90 días': '#991b1b', '90+ días': '#7f1d1d' };
+    const pendingOrders = (d1.pendingAll || d1.orders || []).filter(o => o.status !== 'COBRADO' && o.status !== 'ANULADO');
     
     pendingOrders.forEach(o => {
         const orderDate = new Date(o.date);
         const diffDays = Math.floor((today - orderDate) / (1000*60*60*24));
-        if (diffDays <= 7) agingBuckets['0-7 días'] += o.amount;
-        else if (diffDays <= 15) agingBuckets['8-15 días'] += o.amount;
+        if (diffDays <= 15) agingBuckets['0-15 días'] += o.amount;
         else if (diffDays <= 30) agingBuckets['16-30 días'] += o.amount;
-        else agingBuckets['30+ días'] += o.amount;
+        else if (diffDays <= 60) agingBuckets['31-60 días'] += o.amount;
+        else if (diffDays <= 90) agingBuckets['60-90 días'] += o.amount;
+        else agingBuckets['90+ días'] += o.amount;
     });
     
     const totalPending = Object.values(agingBuckets).reduce((a,b) => a+b, 0);
@@ -586,7 +587,7 @@ function coreLogic(d1, d2, m1) {
         { label: 'Margen Neto', val: margenNeto, prev: 0, t: 'pct', hideDelta:true,
           info: { desc:'Rentabilidad real: Ventas menos todos los costos del mes.', calc:`Ventas Brutas: ${fmt(curStats.brutas)}<br>- Cheques del Mes (mercadería): ${fmt(costoChequesDelMes)}<br>- Logística: ${fmt(costoLogistica)}<br>- Publicidad: ${fmt(impAds)}<br>- Marketing: ${fmt(gMkt)}<br>- Gastos Operativos: ${fmt(ops)}<hr/>Ganancia Neta = ${fmt(gananciaNeta)}<br>Margen Neto = ${fmt(margenNeto,'dec')}%` } },
         { label: 'Deuda por Antigüedad', val: agingBarHtml, prev: 0, t: 'raw', hideDelta:true,
-          info: { desc:'Deuda pendiente clasificada por antigüedad. La deuda vieja (30+ días) es la más riesgosa.', calc:`0-7 días: ${fmt(agingBuckets['0-7 días'])}<br>8-15 días: ${fmt(agingBuckets['8-15 días'])}<br>16-30 días: ${fmt(agingBuckets['16-30 días'])}<br>30+ días: ${fmt(agingBuckets['30+ días'])}<hr/>Total pendiente: ${fmt(totalPending)}`} }
+          info: { desc:'Deuda total pendiente de TODOS los meses, clasificada por antigüedad. La deuda vieja (60+ días) es la más riesgosa.', calc:`0-15 días: ${fmt(agingBuckets['0-15 días'])}<br>16-30 días: ${fmt(agingBuckets['16-30 días'])}<br>31-60 días: ${fmt(agingBuckets['31-60 días'])}<br>60-90 días: ${fmt(agingBuckets['60-90 días'])}<br>90+ días: ${fmt(agingBuckets['90+ días'])}<hr/>Total pendiente: ${fmt(totalPending)}<br>Pedidos: ${pendingOrders.length}`} }
     ], 'repeat(3, 1fr)');
 
     /* 2. RIESGO Y CHEQUES REDESIGN */

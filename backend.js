@@ -204,6 +204,7 @@ var gasBackend = {
 
         var targetYMonth = targetDate.getFullYear() + '-' + this.padZero(targetDate.getMonth() + 1);
         var orders = [];
+        var pendingAll = [];
         var glob = { totalBruto: 0, totalCobrado: 0, porMes: {}, totalDeuda: 0 };
         
         for (var i = 1; i < data.length; i++) {
@@ -239,6 +240,8 @@ var gasBackend = {
                     glob.porMes[yMonth].cobrado += imp;
                 } else {
                     glob.totalDeuda += imp;
+                    // Recolectar TODOS los pedidos pendientes de cualquier mes
+                    pendingAll.push({ date: tsFull, amount: imp, status: st });
                 }
             }
             
@@ -250,7 +253,7 @@ var gasBackend = {
                 });
             }
         }
-        return { current: orders, global: glob };
+        return { current: orders, global: glob, pendingAll: pendingAll };
     },
 
     readMonthlySummary: function(ss) {
@@ -325,6 +328,7 @@ var gasBackend = {
             chequesActivos: cheques,
             totalChequesActivos: totalChequesActivos,
             orders: orders.current, // Export full month orders with FULL timestamp
+            pendingAll: orders.pendingAll, // Todos los pedidos pendientes de cualquier mes
             globalStats: orders.global // Agregado para histórico
         };
     },
