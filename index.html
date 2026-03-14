@@ -106,11 +106,15 @@
 
         /* Edit Layout Mode */
         .dashboard-section { transition: all 0.2s ease; border-radius: 8px; }
-        .edit-mode .dashboard-section { border: 2px dashed var(--border); padding: 12px; margin-bottom: 16px; background: var(--bg-body); cursor: grab; }
+        .edit-mode .dashboard-section { border: 2px dashed var(--border); padding: 12px; margin-bottom: 16px; background: var(--bg-body); }
         .edit-mode .dashboard-section:active { cursor: grabbing; }
         .edit-mode .dashboard-section.sortable-ghost { opacity: 0.3; background: var(--success-bg); border-color: var(--success); }
         .edit-mode .dashboard-section.sortable-chosen { box-shadow: 0 8px 25px rgba(0,0,0,0.15); transform: scale(1.01); }
         .edit-mode .drag-handle { display: inline-block !important; }
+        .edit-mode .sortable-card { cursor: grab; border: 1px dashed transparent; transition: border-color 0.15s; }
+        .edit-mode .sortable-card:hover { border-color: var(--border-hover); }
+        .edit-mode .sortable-card.sortable-ghost { opacity: 0.2; border-color: var(--success); background: var(--success-bg); }
+        .edit-mode .sortable-card.sortable-chosen { box-shadow: 0 4px 15px rgba(0,0,0,0.12); transform: scale(1.02); z-index: 10; }
         .btn-editing { background: var(--success) !important; color: #fff !important; border-color: var(--success) !important; }
 
         .charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 32px; }
@@ -1096,7 +1100,6 @@ async function updateChequeStatus(numero, nuevoEstado) {
 function drawGrid(id, items, colsRule=null) {
     const el = document.getElementById(id);
     if(colsRule) {
-        // Solo aplicar colsRule en desktop; en mobile el CSS media query maneja
         el.setAttribute('data-cols-rule', colsRule);
         if(window.innerWidth > 768) el.style.gridTemplateColumns = colsRule;
         else if(window.innerWidth > 1024) el.style.gridTemplateColumns = colsRule;
@@ -1105,7 +1108,30 @@ function drawGrid(id, items, colsRule=null) {
     window.lastGridItems = window.lastGridItems || {};
     window.lastGridItems[id] = items;
     
-    document.getElementById(id).innerHTML = items.map((k, idx) => {
+    // Check saved card order for this grid
+    const savedOrder = getCardOrder(id);
+    let orderedItems = items;
+    if (savedOrder && savedOrder.length > 0) {
+        // Reorder items based on saved order, append any new ones at end
+        const itemMap = {};
+        items.forEach((k, idx) => { itemMap[k.label] = k; });
+        const reordered = [];
+        savedOrder.forEach(label => { if(itemMap[label]) { reordered.push(itemMap[label]); delete itemMap[label]; } });
+        // Add cards that came from other sections (cross-section moves)
+        const crossCards = getCrossCards(id);
+        crossCards.forEach(cardLabel => {
+            // Find this card in any other grid's lastGridItems
+            for (const [gid, gitems] of Object.entries(window.lastGridItems)) {
+                if (gid === id) continue;
+                const found = gitems.find(k => k.label === cardLabel);
+                if (found) { reordered.push(found); break; }
+            }
+        });
+        Object.values(itemMap).forEach(k => reordered.push(k));
+        orderedItems = reordered;
+    }
+    
+    document.getElementById(id).innerHTML = orderedItems.map((k, idx) => {
         const d = (k.hideDelta || !k.prev) ? 0 : calcDelta(k.val, k.prev);
         let dHtml = '', dClass = 'delta-neutral';
         if(d !== 0) {
@@ -1118,12 +1144,56 @@ function drawGrid(id, items, colsRule=null) {
         
         let valOutput = k.t === 'raw' ? k.val : (k.t==='num'&&k.label.includes('Cobrado /') ? k.val : fmt(k.val, k.t));
         
-        return `<div class="metric-card">
+        return `<div class="metric-card sortable-card" data-card-id="${k.label}">
             <div class="metric-title">${k.label} ${iconHtml}</div>
             <div class="metric-value">${valOutput}</div>
             <div class="metric-delta">${dHtml} <div style="margin-left:auto; font-size:0.75rem;">${k.info && k.info.calc.includes('Mayoría Pendiente') ? '<span style="color:var(--danger)">CRÍTICO</span>' : ''}</div></div>
         </div>`;
     }).join('');
+    
+    // Init card sortable if in edit mode
+    if (isEditMode) initCardSortable(id);
+}
+
+function getCardOrder(gridId) {
+    try {
+        const saved = localStorage.getItem('rosecal_cards_' + gridId);
+        return saved ? JSON.parse(saved) : null;
+    } catch(e) { return null; }
+}
+
+function getCrossCards(gridId) {
+    try {
+        const saved = localStorage.getItem('rosecal_cross_' + gridId);
+        return saved ? JSON.parse(saved) : [];
+    } catch(e) { return []; }
+}
+
+function saveCardOrders() {
+    document.querySelectorAll('.metrics-grid').forEach(grid => {
+        const cards = Array.from(grid.querySelectorAll('.sortable-card')).map(c => c.dataset.cardId);
+        try { localStorage.setItem('rosecal_cards_' + grid.id, JSON.stringify(cards)); } catch(e) {}
+    });
+}
+
+let cardSortables = {};
+function initCardSortable(gridId) {
+    const el = document.getElementById(gridId);
+    if (!el) return;
+    if (cardSortables[gridId]) cardSortables[gridId].destroy();
+    cardSortables[gridId] = Sortable.create(el, {
+        group: 'cards', // shared group allows cross-section dragging
+        animation: 200,
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        draggable: '.sortable-card',
+        onEnd: function() { saveCardOrders(); }
+    });
+}
+
+function destroyCardSortables() {
+    Object.values(cardSortables).forEach(s => { try { s.destroy(); } catch(e){} });
+    cardSortables = {};
 }
 
 function openModal() { 
@@ -1507,18 +1577,23 @@ function toggleEditLayout() {
         btn.classList.add('btn-editing');
         btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Guardar Layout';
         
-        // Init SortableJS
+        // Init section sortable
         if (!layoutSortable) {
             layoutSortable = Sortable.create(container, {
                 animation: 200,
-                handle: '.dashboard-section',
+                handle: '.drag-handle',
                 ghostClass: 'sortable-ghost',
                 chosenClass: 'sortable-chosen',
-                dragClass: 'sortable-drag',
+                draggable: '.dashboard-section',
                 easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
             });
         }
         layoutSortable.option('disabled', false);
+        
+        // Init card sortables for all grids
+        document.querySelectorAll('.metrics-grid').forEach(grid => {
+            if (grid.id) initCardSortable(grid.id);
+        });
     } else {
         container.classList.remove('edit-mode');
         btn.classList.remove('btn-editing');
@@ -1526,9 +1601,13 @@ function toggleEditLayout() {
         
         if (layoutSortable) layoutSortable.option('disabled', true);
         
-        // Save order to localStorage
+        // Save section order
         const order = Array.from(container.querySelectorAll('.dashboard-section')).map(el => el.dataset.section);
         try { localStorage.setItem('rosecal_layout', JSON.stringify(order)); } catch(e) {}
+        
+        // Save card orders and destroy sortables
+        saveCardOrders();
+        destroyCardSortables();
     }
 }
 
