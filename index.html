@@ -246,7 +246,7 @@
             <input type="text" id="margenGanancia" placeholder="ej: 35" oninput="if(window._authToken) renderDashboard()" style="width:60px; text-align:right;" value="35">
         </div>
         <button class="btn btn-primary" onclick="openModal()">Ingresar Datos Manuales</button>
-        <button class="btn" onclick="renderDashboard()">Recargar</button>
+        <button class="btn" onclick="forceReload()">Recargar</button>
         <button class="btn" id="btnEditLayout" onclick="toggleEditLayout()" style="margin-left:auto;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7m-3 12V9m6 6V9"/></svg>
             Editar Layout
@@ -464,8 +464,8 @@ function saveToCache(month, data) {
     try { localStorage.setItem(getCacheKey(month), JSON.stringify({ data, _ts: Date.now() })); } catch(e) {}
 }
 
-async function fetchAPI(month) {
-    let url = API_PROXY + '?action=read' + (month ? '&month='+month : '');
+async function fetchAPI(month, nocache) {
+    let url = API_PROXY + '?action=read' + (month ? '&month='+month : '') + (nocache ? '&nocache=1&t='+Date.now() : '');
     const headers = window._authToken ? { 'Authorization': 'Bearer ' + window._authToken } : {};
     try { const r = await fetch(url, { headers }); const d = await r.json(); if(d && !d.error) saveToCache(month, d); return d; } catch(e) { console.error(e); return { error:true }; }
 }
@@ -1345,6 +1345,20 @@ async function saveData() {
         try { Object.keys(localStorage).filter(k=>k.startsWith("rosecal_")).forEach(k=>localStorage.removeItem(k)); } catch(e){} setTimeout(()=>renderDashboard(), 1500);
     } catch(e) { alert('Error al guardar.'); }
     document.getElementById('btnSave').innerText = 'Guardar Datos';
+}
+
+async function forceReload() {
+    // Clear all caches and fetch fresh from API
+    try { Object.keys(localStorage).filter(k=>k.startsWith("rosecal_")).forEach(k=>localStorage.removeItem(k)); } catch(e){}
+    document.getElementById('dashboardLoader').classList.add('active');
+    let m1 = document.getElementById('globalMonth').value;
+    let m2 = document.getElementById('compareMonth').value;
+    if(!m1) { let d=new Date(); m1=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+    const [d1, d2] = await Promise.all([ fetchAPI(m1, true), m2 ? fetchAPI(m2, true) : Promise.resolve(null) ]);
+    document.getElementById('dashboardLoader').classList.remove('active');
+    if(!d1 || d1.error || !d1.orders) return;
+    currentData = d1;
+    coreLogic(d1, d2, m1);
 }
 
 function toggleDsoView() {

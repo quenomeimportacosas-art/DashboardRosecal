@@ -102,8 +102,8 @@ export default async function handler(req) {
       headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': 'https://rosecal.vercel.app',
-        'Cache-Control': isRead
-          ? 's-maxage=300, stale-while-revalidate=600'
+        'Cache-Control': isRead && !searchParams.has('nocache')
+          ? 's-maxage=60, stale-while-revalidate=120'
           : 'no-store',
         'X-Content-Type-Options': 'nosniff',
         'X-Frame-Options': 'DENY',
