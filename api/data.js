@@ -29,8 +29,11 @@ async function verifyGoogleToken(token) {
 
 // Allowed emails (set your email here)
 const ALLOWED_EMAILS = [
-  'rosecaloficial@gmail.com'
-  // Add more allowed emails here
+  'rosecaloficial@gmail.com',
+  'damianap9@gmail.com',
+  'damianp@poletdigital.com',
+  'llaverosvisibles@gmail.com',
+  'martinp10105@gmail.com'
 ];
 
 export default async function handler(req) {
