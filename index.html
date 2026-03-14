@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
     <style>
         :root {
             --bg-body: #ffffff; --bg-card: #ffffff;
@@ -195,6 +196,10 @@
             <label style="margin-left:8px;">VS</label>
             <input type="month" id="compareMonth" onchange="renderDashboard()">
         </div>
+        <div class="date-picker">
+            <label>META DEL MES</label>
+            <input type="text" id="metaMensual" placeholder="ej: 5000000" oninput="updateChartView()" style="width:120px; text-align:right;" value="">
+        </div>
         <button class="btn btn-primary" onclick="openModal()">Ingresar Datos Manuales</button>
         <button class="btn" onclick="renderDashboard()">Recargar</button>
     </div>
@@ -284,6 +289,7 @@
                 Evolución del Negocio
                 <select id="chartViewMode" onchange="updateChartView()" style="padding:4px 8px; font-size:0.8rem; border-radius:4px; border:1px solid var(--border); background:var(--bg-body);">
                     <option value="diario">Mensual (Diaria)</option>
+                    <option value="acumulado">Acumulado MTD</option>
                     <option value="mensual">Histórico (Mes a Mes)</option>
                 </select>
             </div>
@@ -816,50 +822,252 @@ function updateChartView() {
     const cData = window._chartData;
     const ttip = { backgroundColor:'#18181b', titleColor:'#fff', padding:10, cornerRadius:4, bodyFont:{family:'Inter'} };
     
+    // Helper: parse meta value
+    const getMetaVal = () => {
+        const raw = document.getElementById('metaMensual').value;
+        if(!raw) return 0;
+        return parseFloat(raw.replace(/\./g,'').replace(',','.')) || 0;
+    };
+    
+    // Helper: day labels
+    const dayLabel = (d) => {
+        const dias = ['Do','Lu','Ma','Mi','Ju','Vi','Sa'];
+        const parts = d.split('-');
+        const dt = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+        return dias[dt.getDay()] + ' ' + String(parseInt(parts[2]));
+    };
+    
+    const fmt$ = v => '$' + Math.round(v).toLocaleString('es-AR');
+    
     if(mode === 'diario') {
-        const labels = cData.daysArr.map(d => {
-            const dias = ['Do','Lu','Ma','Mi','Ju','Vi','Sa'];
-            const parts = d.split('-');
-            const dt = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
-            return dias[dt.getDay()] + ' ' + String(parseInt(parts[2]));
-        });
+        const labels = cData.daysArr.map(d => dayLabel(d));
+        
+        // ── Datasets ──
         const datasets = [{ label:'Mes actual', data:cData.dailyData, borderColor:'#18181b', backgroundColor:'rgba(24,24,27,0.05)', fill:true, borderWidth:2, tension:0.2, pointRadius:4, pointHoverRadius:6 }];
+        
+        // Mes comparación
         if (cData.prevDailyData) {
             datasets.push({ label: cData.prevLabel, data: cData.prevDailyData, borderColor:'#a1a1aa', backgroundColor:'transparent', fill:false, borderWidth:2, borderDash:[6,4], tension:0.2, pointRadius:3, pointHoverRadius:5, pointStyle:'circle' });
         }
+        
+        // ── 1.1 Proyección de cierre ──
+        const diasConVenta = cData.dailyData.filter(v => v > 0).length;
+        const totalFact = cData.dailyData.reduce((a,b) => a+b, 0);
+        const promDiario = diasConVenta > 0 ? totalFact / diasConVenta : 0;
+        
+        // Encontrar último día con datos reales
+        let lastRealIdx = cData.dailyData.length - 1;
+        while(lastRealIdx >= 0 && cData.dailyData[lastRealIdx] === 0) lastRealIdx--;
+        
+        if (promDiario > 0 && lastRealIdx < cData.daysArr.length - 1) {
+            const projData = cData.dailyData.map((v, i) => {
+                if (i <= lastRealIdx) return null; // no mostrar en zona con datos
+                return promDiario;
+            });
+            // Conectar: poner el último valor real como inicio de la proyección
+            if (lastRealIdx >= 0) projData[lastRealIdx] = cData.dailyData[lastRealIdx];
+            
+            datasets.push({
+                label: 'Proyección (' + fmt$(promDiario) + '/día)',
+                data: projData,
+                borderColor: '#637c6c',
+                backgroundColor: 'rgba(99,124,108,0.06)',
+                fill: true,
+                borderWidth: 2,
+                borderDash: [4, 4],
+                tension: 0.2,
+                pointRadius: 0,
+                pointHoverRadius: 4,
+                spanGaps: true
+            });
+        }
+        
+        // ── 1.2 Meta mensual (línea horizontal) ──
+        const meta = getMetaVal();
+        if (meta > 0) {
+            datasets.push({
+                label: 'Meta: ' + fmt$(meta),
+                data: new Array(cData.daysArr.length).fill(null),
+                borderColor: 'transparent',
+                backgroundColor: 'transparent',
+                pointRadius: 0,
+            });
+        }
+        
+        // Proyección de cierre total
+        const totalDaysInMonth = cData.daysArr.length;
+        const projCierre = promDiario * totalDaysInMonth;
+        
         charts.main = new Chart(document.getElementById('chartMain'), {
             type: 'line', data: { labels, datasets },
-            options: { responsive:true, maintainAspectRatio:false, plugins:{ tooltip:ttip, legend:{ display: cData.prevDailyData ? true : false, position:'bottom', labels:{ usePointStyle:true, padding:16, font:{size:12} } } }, scales:{ x:{grid:{display:false}}, y:{grid:{color:'#f4f4f5'}, ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'k'}} } }
+            options: {
+                responsive:true, maintainAspectRatio:false,
+                plugins:{
+                    tooltip: ttip,
+                    legend:{ display: datasets.length > 1, position:'bottom', labels:{ usePointStyle:true, padding:12, font:{size:11}, filter: (item) => item.text !== '' } },
+                    annotation: meta > 0 ? {
+                        annotations: {
+                            metaLine: {
+                                type: 'line',
+                                yMin: meta / totalDaysInMonth,
+                                yMax: meta / totalDaysInMonth,
+                                borderColor: '#d4a373',
+                                borderWidth: 2,
+                                borderDash: [8, 4],
+                                label: {
+                                    display: true,
+                                    content: 'Meta diaria: ' + fmt$(meta / totalDaysInMonth),
+                                    position: 'start',
+                                    backgroundColor: '#d4a373',
+                                    color: '#fff',
+                                    font: { size: 10 },
+                                    padding: 4,
+                                    borderRadius: 3
+                                }
+                            }
+                        }
+                    } : {}
+                },
+                scales:{ x:{grid:{display:false}}, y:{grid:{color:'#f4f4f5'}, ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'k'}} }
+            }
         });
-        // Ticket diario promedio
-        const totalFact = cData.dailyData.reduce((a,b) => a+b, 0);
-        const diasConVenta = cData.dailyData.filter(v => v > 0).length;
-        const ticketDiario = diasConVenta > 0 ? totalFact / diasConVenta : 0;
+        
+        // ── Ticket diario promedio + proyección info ──
         const maxDia = Math.max(...cData.dailyData);
-        const minDia = Math.min(...cData.dailyData.filter(v => v > 0));
-        const fmt$ = v => '$' + Math.round(v).toLocaleString('es-AR');
+        const minDiaArr = cData.dailyData.filter(v => v > 0);
+        const minDia = minDiaArr.length > 0 ? Math.min(...minDiaArr) : 0;
         
         let comparHtml = '';
         if (cData.prevDailyData) {
             const prevTotal = cData.prevDailyData.reduce((a,b) => a+b, 0);
             const prevDias = cData.prevDailyData.filter(v => v > 0).length;
             const prevTicket = prevDias > 0 ? prevTotal / prevDias : 0;
-            const delta = prevTicket > 0 ? ((ticketDiario - prevTicket) / prevTicket * 100) : 0;
+            const delta = prevTicket > 0 ? ((promDiario - prevTicket) / prevTicket * 100) : 0;
             const deltaColor = delta >= 0 ? '#10b981' : '#ef4444';
             const deltaSign = delta >= 0 ? '▲' : '▼';
             comparHtml = `<div style="margin-left:8px; color:${deltaColor}; font-weight:600; font-size:0.8rem;">${deltaSign} ${Math.abs(delta).toFixed(1)}% vs ${cData.prevLabel}</div>`;
         }
         
+        let metaHtml = '';
+        if (meta > 0) {
+            const pctMeta = (totalFact / meta * 100);
+            const metaColor = pctMeta >= 100 ? '#10b981' : pctMeta >= 60 ? '#d4a373' : '#ef4444';
+            metaHtml = `<div style="display:flex; align-items:center; gap:4px;"><span style="color:var(--text-muted); font-weight:500; font-size:0.8rem;">Meta</span> <span style="font-weight:700; color:${metaColor};">${pctMeta.toFixed(0)}%</span></div>`;
+        }
+        
+        let projHtml = '';
+        if (promDiario > 0) {
+            projHtml = `<div style="display:flex; align-items:center; gap:4px;"><span style="color:var(--text-muted); font-weight:500; font-size:0.8rem;">Proy. cierre</span> <span style="font-weight:700; color:#637c6c;">${fmt$(projCierre)}</span></div>`;
+        }
+        
         document.getElementById('dailyTicketAvg').innerHTML = `
             <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
-                <div style="display:flex; align-items:center; flex-wrap:wrap; gap:4px;"><span style="color:var(--text-muted); font-weight:500; font-size:0.8rem;">Promedio diario</span> <span style="font-weight:700;">${fmt$(ticketDiario)}</span>${comparHtml}</div>
+                <div style="display:flex; align-items:center; flex-wrap:wrap; gap:4px;"><span style="color:var(--text-muted); font-weight:500; font-size:0.8rem;">Promedio diario</span> <span style="font-weight:700;">${fmt$(promDiario)}</span>${comparHtml}</div>
+                ${projHtml}
+                ${metaHtml}
                 <div style="display:flex; align-items:center; gap:4px;"><span style="color:var(--text-muted); font-weight:500; font-size:0.8rem;">Mejor día</span> <span style="font-weight:700; color:#10b981;">${fmt$(maxDia)}</span></div>
                 <div style="display:flex; align-items:center; gap:4px;"><span style="color:var(--text-muted); font-weight:500; font-size:0.8rem;">Menor día</span> <span style="font-weight:700; color:#ef4444;">${fmt$(minDia)}</span></div>
             </div>
             <div style="color:var(--text-muted); font-size:0.8rem; white-space:nowrap;">${diasConVenta} días con ventas</div>
         `;
         document.getElementById('dailyTicketAvg').style.display = 'flex';
+        
+    } else if(mode === 'acumulado') {
+        // ── 1.3 Vista Acumulado MTD ──
+        const labels = cData.daysArr.map(d => dayLabel(d));
+        
+        // Acumulado mes actual
+        let cumul = 0;
+        const cumulData = cData.dailyData.map(v => { cumul += v; return cumul; });
+        
+        const datasets = [{ label:'Acumulado mes actual', data:cumulData, borderColor:'#18181b', backgroundColor:'rgba(24,24,27,0.08)', fill:true, borderWidth:2.5, tension:0.15, pointRadius:3, pointHoverRadius:6 }];
+        
+        // Acumulado mes comparación
+        if (cData.prevDailyData) {
+            let prevCumul = 0;
+            const prevCumulData = cData.prevDailyData.map(v => { prevCumul += v; return prevCumul; });
+            datasets.push({ label: cData.prevLabel + ' (acumulado)', data: prevCumulData, borderColor:'#a1a1aa', backgroundColor:'transparent', fill:false, borderWidth:2, borderDash:[6,4], tension:0.15, pointRadius:2, pointHoverRadius:5 });
+        }
+        
+        // Proyección acumulada
+        const diasConVenta = cData.dailyData.filter(v => v > 0).length;
+        const totalFact = cData.dailyData.reduce((a,b) => a+b, 0);
+        const promDiario = diasConVenta > 0 ? totalFact / diasConVenta : 0;
+        
+        let lastRealIdx = cData.dailyData.length - 1;
+        while(lastRealIdx >= 0 && cData.dailyData[lastRealIdx] === 0) lastRealIdx--;
+        
+        if (promDiario > 0 && lastRealIdx < cData.daysArr.length - 1) {
+            let projCumul = cumulData[lastRealIdx] || totalFact;
+            const projCumulData = cData.daysArr.map((_, i) => {
+                if (i < lastRealIdx) return null;
+                if (i === lastRealIdx) return projCumul;
+                projCumul += promDiario;
+                return projCumul;
+            });
+            datasets.push({
+                label: 'Proyección acumulada',
+                data: projCumulData,
+                borderColor: '#637c6c',
+                backgroundColor: 'rgba(99,124,108,0.06)',
+                fill: true,
+                borderWidth: 2,
+                borderDash: [4, 4],
+                tension: 0.15,
+                pointRadius: 0,
+                spanGaps: true
+            });
+        }
+        
+        // Meta como línea horizontal
+        const meta = getMetaVal();
+        
+        charts.main = new Chart(document.getElementById('chartMain'), {
+            type: 'line', data: { labels, datasets },
+            options: {
+                responsive:true, maintainAspectRatio:false,
+                plugins:{
+                    tooltip: { ...ttip, callbacks: { label: (ctx) => ctx.dataset.label + ': ' + fmt$(ctx.raw) } },
+                    legend:{ display:true, position:'bottom', labels:{ usePointStyle:true, padding:12, font:{size:11} } },
+                    annotation: meta > 0 ? {
+                        annotations: {
+                            metaLine: {
+                                type: 'line',
+                                yMin: meta,
+                                yMax: meta,
+                                borderColor: '#d4a373',
+                                borderWidth: 2,
+                                borderDash: [8, 4],
+                                label: { display: true, content: 'Meta: ' + fmt$(meta), position: 'end', backgroundColor: '#d4a373', color: '#fff', font: { size: 10 }, padding: 4, borderRadius: 3 }
+                            }
+                        }
+                    } : {}
+                },
+                scales:{ x:{grid:{display:false}}, y:{grid:{color:'#f4f4f5'}, ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'k'}} }
+            }
+        });
+        
+        // Info bar
+        const projCierre = promDiario * cData.daysArr.length;
+        let metaHtml = '';
+        if (meta > 0) {
+            const pctMeta = (totalFact / meta * 100);
+            const metaColor = pctMeta >= 100 ? '#10b981' : pctMeta >= 60 ? '#d4a373' : '#ef4444';
+            metaHtml = `<div style="display:flex; align-items:center; gap:4px;"><span style="color:var(--text-muted); font-weight:500; font-size:0.8rem;">Meta</span> <span style="font-weight:700; color:${metaColor};">${pctMeta.toFixed(0)}%</span></div>`;
+        }
+        document.getElementById('dailyTicketAvg').innerHTML = `
+            <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+                <div style="display:flex; align-items:center; gap:4px;"><span style="color:var(--text-muted); font-weight:500; font-size:0.8rem;">Acumulado</span> <span style="font-weight:700;">${fmt$(totalFact)}</span></div>
+                <div style="display:flex; align-items:center; gap:4px;"><span style="color:var(--text-muted); font-weight:500; font-size:0.8rem;">Proy. cierre</span> <span style="font-weight:700; color:#637c6c;">${fmt$(projCierre)}</span></div>
+                ${metaHtml}
+                <div style="display:flex; align-items:center; gap:4px;"><span style="color:var(--text-muted); font-weight:500; font-size:0.8rem;">Promedio diario</span> <span style="font-weight:700;">${fmt$(promDiario)}</span></div>
+            </div>
+            <div style="color:var(--text-muted); font-size:0.8rem; white-space:nowrap;">${diasConVenta} días con ventas</div>
+        `;
+        document.getElementById('dailyTicketAvg').style.display = 'flex';
+        
     } else {
+        // Histórico mes a mes
         document.getElementById('dailyTicketAvg').style.display = 'none';
         const sortedMonths = Object.keys(cData.monthProps).sort();
         const dataBruta = sortedMonths.map(m => cData.monthProps[m].bruto);
