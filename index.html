@@ -280,66 +280,6 @@
     </div>
 
     <!-- Segunda Fila: Riesgo -->
-    <div class="dashboard-section" data-section="riesgo">
-        <div class="section-header"><span class="drag-handle" style="display:none; cursor:grab; margin-right:8px; color:var(--text-muted);">⠿</span>Riesgo Financiero</div>
-    <div class="metric-card" style="margin-bottom: 32px; padding: 24px;">
-        <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('risk-resumen', this)">Resumen</button>
-            <button class="tab-btn" onclick="switchTab('risk-manage', this)">Gestionar cheques</button>
-        </div>
-
-        <div id="risk-resumen" class="tab-content active">
-            <div class="risk-grid-3" id="riskGridSummary">
-                <div class="risk-metric-card">
-                    <div class="risk-metric-label">Próximo a pagar</div>
-                    <div class="risk-metric-val" id="riskNextVal">--</div>
-                    <div class="risk-metric-sub" id="riskNextSub">--</div>
-                </div>
-                <div class="risk-metric-card">
-                    <div class="risk-metric-label">Estado caja</div>
-                    <div class="risk-metric-val" id="riskBoxStatus">--</div>
-                    <div class="risk-metric-sub" id="riskBoxSub">--</div>
-                </div>
-                <div class="risk-metric-card">
-                    <div class="risk-metric-label">Siguiente</div>
-                    <div class="risk-metric-val" id="riskAfterVal">--</div>
-                    <div class="risk-metric-sub" id="riskAfterSub">--</div>
-                </div>
-            </div>
-            
-            <div style="margin-top: 16px; text-align: right;">
-                <button class="btn" style="padding: 6px 14px; font-size: 12px;" onclick="openUpcomingModal()">Ver próximos</button>
-            </div>
-        </div>
-
-        <div id="risk-manage" class="tab-content">
-            <div class="filter-group" id="riskTableFilters">
-                <button class="chip active" onclick="filterRiskTable('TODOS', this)">Todos</button>
-                <button class="chip" onclick="filterRiskTable('PENDIENTE', this)">Pendientes</button>
-                <button class="chip" onclick="filterRiskTable('VENCIDO', this)">Vencidos</button>
-                <button class="chip" onclick="filterRiskTable('PAGADO', this)">Pagados</button>
-            </div>
-            <div class="table-scroll">
-                <table class="simple-table">
-                    <thead>
-                        <tr>
-                            <th>Destinatario</th>
-                            <th>Fecha</th>
-                            <th>Monto</th>
-                            <th>Estado</th>
-                        </tr>
-                    </thead>
-                    <tbody id="riskTableBody">
-                        <!-- Rows injected here -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-    <div id="checkBannerContainer" style="display:none;"></div>
-    <div class="metrics-grid" id="rowRisk" style="display:none;"></div>
-    </div><!-- close riesgo section -->
-
     <!-- Tercera Fila: Crecimiento -->
     <div class="dashboard-section" data-section="crecimiento">
         <div class="section-header"><span class="drag-handle" style="display:none; cursor:grab; margin-right:8px; color:var(--text-muted);">⠿</span>Motor de Crecimiento</div>
@@ -881,7 +821,7 @@ function coreLogic(d1, d2, m1) {
     ], 'repeat(3, 1fr)');
 
     /* 2. RIESGO Y CHEQUES REDESIGN */
-    renderRiskWidget(d1, cajaActual);
+    // renderRiskWidget(d1, cajaActual); // Sección removida
 
     // ── 3.1 ALERTAS INTELIGENTES ──
     const alerts = [];
