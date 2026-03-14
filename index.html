@@ -928,10 +928,11 @@ function coreLogic(d1, d2, m1) {
     const alertsEl = document.getElementById('alertsContainer');
     if (alerts.length > 0) {
         const alertColors = { danger: { bg: 'var(--danger-bg)', border: 'var(--danger)', icon: '⚠' }, warning: { bg: 'var(--warning-bg)', border: 'var(--warning)', icon: '⚡' }, info: { bg: 'var(--success-bg)', border: 'var(--success)', icon: 'ℹ' } };
-        alertsEl.innerHTML = alerts.map(a => {
+        alertsEl.innerHTML = alerts.map((a, i) => {
             const c = alertColors[a.type] || alertColors.info;
-            return `<div style="padding:10px 16px; background:${c.bg}; border-left:3px solid ${c.border}; border-radius:4px; margin-bottom:6px; font-size:0.85rem; color:var(--text-main); display:flex; align-items:center; gap:8px;">
-                <span>${c.icon}</span> ${a.text}
+            return `<div id="alert_${i}" style="padding:10px 16px; background:${c.bg}; border-left:3px solid ${c.border}; border-radius:4px; margin-bottom:6px; font-size:0.85rem; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+                <span>${c.icon}</span> <span style="flex:1;">${a.text}</span>
+                <span onclick="this.parentElement.remove(); if(!document.getElementById('alertsContainer').children.length) document.getElementById('alertsContainer').style.display='none';" style="cursor:pointer; color:var(--text-muted); font-size:1.1rem; padding:0 4px; line-height:1;">&times;</span>
             </div>`;
         }).join('');
         alertsEl.style.display = 'block';
