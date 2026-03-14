@@ -241,10 +241,6 @@
             <label>META DEL MES</label>
             <input type="text" id="metaMensual" placeholder="ej: 5000000" oninput="updateChartView()" style="width:120px; text-align:right;" value="">
         </div>
-        <div class="date-picker">
-            <label>% GANANCIA</label>
-            <input type="text" id="margenGanancia" placeholder="ej: 35" oninput="if(window._authToken) renderDashboard()" style="width:60px; text-align:right;" value="35">
-        </div>
         <button class="btn btn-primary" onclick="openModal()">Ingresar Datos Manuales</button>
         <button class="btn" onclick="forceReload()">Recargar</button>
         <button class="btn" id="btnEditLayout" onclick="toggleEditLayout()" style="margin-left:auto;">
@@ -780,7 +776,7 @@ function coreLogic(d1, d2, m1) {
 
     // ── COMPROMISO DEL MES ──
     // % de ganancia configurable
-    const pctGanancia = parseFloat(document.getElementById('margenGanancia').value) || 35;
+    const pctGanancia = 40;
     const margenDecimal = pctGanancia / 100;
     
     const chequesPendientesMes = (d1.chequesActivos || []).filter(c => {
