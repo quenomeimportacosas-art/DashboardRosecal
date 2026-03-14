@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
             --bg-body: #ffffff; --bg-card: #ffffff;
@@ -174,6 +175,32 @@
     </style>
 </head>
 <body>
+
+<!-- Login Screen -->
+<div id="loginScreen" style="position:fixed; inset:0; background:#fff; z-index:9999; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:24px;">
+    <div style="text-align:center;">
+        <div style="font-weight:700; font-size:1.3rem; letter-spacing:-0.02em; margin-bottom:8px;">ROSECAL</div>
+        <div style="color:#666; font-size:0.9rem; margin-bottom:32px;">Dashboard de Administración</div>
+        <div id="g_id_onload"
+            data-client_id="241983217783-ddurkppoat3g53gde7g4e3173efn29ch.apps.googleusercontent.com"
+            data-callback="handleGoogleLogin"
+            data-auto_prompt="false">
+        </div>
+        <div class="g_id_signin"
+            data-type="standard"
+            data-size="large"
+            data-theme="outline"
+            data-text="sign_in_with"
+            data-shape="rectangular"
+            data-logo_alignment="left"
+            data-width="280">
+        </div>
+        <div id="loginError" style="color:#b56b6b; font-size:0.8rem; margin-top:16px; display:none;"></div>
+    </div>
+</div>
+
+<!-- Dashboard (hidden until auth) -->
+<div id="dashboardWrapper" style="display:none;">
 
 <div class="dashboard-loader" id="dashboardLoader"><div class="spinner"></div><div style="font-weight:500;">Obteniendo y cruzando métricas...</div></div>
 
@@ -423,7 +450,8 @@ function saveToCache(month, data) {
 
 async function fetchAPI(month) {
     let url = API_PROXY + '?action=read' + (month ? '&month='+month : '');
-    try { const r = await fetch(url); const d = await r.json(); if(d && !d.error) saveToCache(month, d); return d; } catch(e) { console.error(e); return { error:true }; }
+    const headers = window._authToken ? { 'Authorization': 'Bearer ' + window._authToken } : {};
+    try { const r = await fetch(url, { headers }); const d = await r.json(); if(d && !d.error) saveToCache(month, d); return d; } catch(e) { console.error(e); return { error:true }; }
 }
 
 async function renderDashboard() {
@@ -977,7 +1005,7 @@ async function updateChequeStatus(numero, nuevoEstado) {
     document.getElementById('dashboardLoader').classList.add('active');
     const p = new URLSearchParams({ action: 'update_cheque', numero: numero, nuevoEstado: nuevoEstado });
     try {
-        await fetch(APPS_SCRIPT_URL + '?' + p.toString(), {mode:'no-cors'});
+        await fetch(API_PROXY + '?' + p.toString(), { headers: window._authToken ? { 'Authorization': 'Bearer ' + window._authToken } : {} });
         // Wait bit for GS to apply
         try { Object.keys(localStorage).filter(k=>k.startsWith("rosecal_")).forEach(k=>localStorage.removeItem(k)); } catch(e){} setTimeout(() => renderDashboard(), 1200);
     } catch(e) {
@@ -1056,7 +1084,7 @@ async function saveData() {
         inversionPublicidad: v('fAds'), gastoMarketing: v('fMkt'), ventasCorporativas: v('fCorp')
     });
     try {
-        await fetch(APPS_SCRIPT_URL + '?' + p.toString(), {mode:'no-cors'});
+        await fetch(API_PROXY + '?' + p.toString(), { headers: window._authToken ? { 'Authorization': 'Bearer ' + window._authToken } : {} });
         closeModal();
         try { Object.keys(localStorage).filter(k=>k.startsWith("rosecal_")).forEach(k=>localStorage.removeItem(k)); } catch(e){} setTimeout(()=>renderDashboard(), 1500);
     } catch(e) { alert('Error al guardar.'); }
@@ -1367,7 +1395,7 @@ async function markChequeAsPaid(numero) {
     document.getElementById('dashboardLoader').classList.add('active');
     const p = new URLSearchParams({ action: 'update_cheque', numero: numero, nuevoEstado: 'PAGADO' });
     try {
-        await fetch(APPS_SCRIPT_URL + '?' + p.toString(), {mode:'no-cors'});
+        await fetch(API_PROXY + '?' + p.toString(), { headers: window._authToken ? { 'Authorization': 'Bearer ' + window._authToken } : {} });
         try { Object.keys(localStorage).filter(k=>k.startsWith("rosecal_")).forEach(k=>localStorage.removeItem(k)); } catch(e){} setTimeout(()=>renderDashboard(), 1500);
     } catch(e) { 
         alert('Hubo un error al comunicarse con la hoja.'); 
@@ -1375,8 +1403,8 @@ async function markChequeAsPaid(numero) {
     }
 }
 
-renderDashboard();
-setInterval(renderDashboard, 60*60*1000);
+// renderDashboard() is called after auth — not here
+setInterval(() => { if(window._authToken) renderDashboard(); }, 60*60*1000);
 
 // Responsive grid fix on resize
 window.addEventListener('resize', () => {
@@ -1385,6 +1413,66 @@ window.addEventListener('resize', () => {
         else el.style.gridTemplateColumns = el.getAttribute('data-cols-rule');
     });
 });
+
+// ── AUTH ──
+const ALLOWED_EMAILS = ['rosecaloficial@gmail.com']; // Emails autorizados
+
+window._authToken = null;
+
+function handleGoogleLogin(response) {
+    const token = response.credential;
+    // Decode JWT payload to get email
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const email = payload.email;
+    
+    if (!ALLOWED_EMAILS.includes(email.toLowerCase())) {
+        document.getElementById('loginError').style.display = 'block';
+        document.getElementById('loginError').textContent = 'Acceso denegado. ' + email + ' no está autorizado.';
+        return;
+    }
+    
+    // Auth OK
+    window._authToken = token;
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('dashboardWrapper').style.display = 'block';
+    renderDashboard();
+}
+
+// Check if already logged in (session)
+function checkExistingSession() {
+    try {
+        const saved = sessionStorage.getItem('rosecal_auth');
+        if (saved) {
+            const { token, exp } = JSON.parse(saved);
+            if (Date.now() < exp) {
+                window._authToken = token;
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('dashboardWrapper').style.display = 'block';
+                renderDashboard();
+                return true;
+            }
+        }
+    } catch(e) {}
+    return false;
+}
+
+// Override renderDashboard to not auto-run — wait for auth
+const _origRenderDashboard = renderDashboard;
+
+// Save session after successful auth
+const _origHandleLogin = handleGoogleLogin;
+window.handleGoogleLogin = function(response) {
+    _origHandleLogin(response);
+    if (window._authToken) {
+        try { sessionStorage.setItem('rosecal_auth', JSON.stringify({ token: window._authToken, exp: Date.now() + 3600000 })); } catch(e) {}
+    }
+};
+
+// On page load: check session or show login
+if (!checkExistingSession()) {
+    // Login screen is already visible
+}
 </script>
+</div><!-- close dashboardWrapper -->
 </body>
 </html>
