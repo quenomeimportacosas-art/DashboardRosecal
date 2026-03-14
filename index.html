@@ -475,10 +475,30 @@ function coreLogic(d1, d2, m1) {
     const impAds = m.inversionPublicidad||0, gMkt = m.gastoMarketing||0, ops = m.gastosOperativos||0;
     const invVsVentas = curStats.brutas > 0 ? (impAds / curStats.brutas)*100 : 0;
     
-    const gananciaNeta = (curStats.pCobradosVal) - (sl.costoBeato||0) - (sl.costoLogistica||0) - impAds - gMkt - ops;
-    const margenNeto = curStats.pCobradosVal > 0 ? (gananciaNeta / curStats.pCobradosVal)*100 : 0;
+    // ── Cheques del mes (costo mercadería) ──
+    // Filtrar cheques que vencen en el mes evaluado (= costo de la mercadería vendida este mes)
+    const chequesDelMes = (d1.chequesActivos || []);
+    const viewingMonth = d1.computedMonth; // "2026-03"
+    let costoChequesDelMes = 0;
+    chequesDelMes.forEach(c => {
+        if (!c.vencimiento) return;
+        const vMonth = c.vencimiento.substring(0, 7); // "2026-03"
+        if (vMonth === viewingMonth && c.estado !== 'ANULADO') {
+            costoChequesDelMes += c.monto;
+        }
+    });
+    
+    const costoLogistica = sl.costoLogistica || 0;
+    
+    // Margen Bruto: Ventas - Cheques del mes - Logística (rentabilidad de la operación)
+    const gananciaBruta = curStats.brutas - costoChequesDelMes - costoLogistica;
+    const margenBruto = curStats.brutas > 0 ? (gananciaBruta / curStats.brutas) * 100 : 0;
+    
+    // Margen Neto: Ganancia bruta - Publicidad - Marketing - Gastos fijos
+    const gananciaNeta = gananciaBruta - impAds - gMkt - ops;
+    const margenNeto = curStats.brutas > 0 ? (gananciaNeta / curStats.brutas) * 100 : 0;
 
-    const burnRate = ops + impAds + gMkt;
+    const burnRate = ops + impAds + gMkt + costoChequesDelMes + costoLogistica;
     const runway = burnRate > 0 ? (cajaActual / burnRate) : 99;
 
     document.getElementById('labelRunway').innerHTML = `Meses de caja: <strong style="color:var(--text-main);">${fmt(runway,'dec')}</strong>`;
@@ -567,8 +587,10 @@ function coreLogic(d1, d2, m1) {
           info: { desc:'Estimación de cuántos días tarda en cobrarse lo facturado. Menor es mejor.', calc:`Deuda pendiente: ${fmt(deudaMes)}<br>Facturado total: ${fmt(curStats.brutas)}<br>Días transcurridos: ${diasTranscurridos}<hr/>DSO ≈ ${dsoEstimado} días${prevDso > 0 ? '<br>Mes anterior: ' + prevDso + ' días' : ''}`} },
         { label: 'Inversión sobre Facturado', val: invVsVentas, prev: 0, t: 'pct', hideDelta:true,
           info: { desc:'Mide cuán eficiente es tu gasto en pauta. Recomendado <= 10%.', calc:`Inversión en Publicidad: ${fmt(impAds)}<br>Total Facturado (Bruto): ${fmt(curStats.brutas)}<hr/>Proporción = ${fmt(invVsVentas,'dec')}%` } },
-        { label: 'Margen Operativo', val: margenNeto, prev: 0, t: 'pct', hideDelta:true,
-          info: { desc:'Porcentaje de rentabilidad pura versus Ventas con status COBRADO.', calc:`Ventas Cobradas: ${fmt(curStats.pCobradosVal)}<br>- Inversión Publicidad & Marketing: ${fmt(impAds+gMkt)}<br>- Gastos Operativos Fijos: ${fmt(ops)}<br>- Costo Beato: ${fmt(sl.costoBeato)}<br>- Costo Logística: ${fmt(sl.costoLogistica)}<hr/>Ganancia Libre = ${fmt(gananciaNeta)}<br>Margen = ${fmt(margenNeto,'dec')}%` } },
+        { label: 'Margen Bruto', val: margenBruto, prev: 0, t: 'pct', hideDelta:true,
+          info: { desc:'Rentabilidad de la operación: Ventas menos costo de mercadería (cheques del mes) y logística.', calc:`Ventas Brutas: ${fmt(curStats.brutas)}<br>- Cheques del Mes (mercadería): ${fmt(costoChequesDelMes)}<br>- Logística: ${fmt(costoLogistica)}<hr/>Ganancia Bruta = ${fmt(gananciaBruta)}<br>Margen Bruto = ${fmt(margenBruto,'dec')}%` } },
+        { label: 'Margen Neto', val: margenNeto, prev: 0, t: 'pct', hideDelta:true,
+          info: { desc:'Rentabilidad final después de todos los gastos. Ventas - Cheques - Logística - Publicidad - Marketing - Operativos.', calc:`Ganancia Bruta: ${fmt(gananciaBruta)}<br>- Publicidad: ${fmt(impAds)}<br>- Marketing: ${fmt(gMkt)}<br>- Gastos Operativos: ${fmt(ops)}<hr/>Ganancia Neta = ${fmt(gananciaNeta)}<br>Margen Neto = ${fmt(margenNeto,'dec')}%` } },
         { label: 'Deuda por Antigüedad', val: agingBarHtml, prev: 0, t: 'raw', hideDelta:true,
           info: { desc:'Deuda pendiente clasificada por antigüedad. La deuda vieja (30+ días) es la más riesgosa.', calc:`0-7 días: ${fmt(agingBuckets['0-7 días'])}<br>8-15 días: ${fmt(agingBuckets['8-15 días'])}<br>16-30 días: ${fmt(agingBuckets['16-30 días'])}<br>30+ días: ${fmt(agingBuckets['30+ días'])}<hr/>Total pendiente: ${fmt(totalPending)}`} }
     ], 'repeat(3, 1fr)');
