@@ -465,7 +465,7 @@ function coreLogic(d1, d2, m1) {
     const pm = (d2 ? d2.manual : (m.prev || {}));
     
     const curStats = buildTxStats(d1.orders, dayLimit);
-    const prevStats = d2 ? buildTxStats(d2.orders, dayLimit) : { validOrders:0, brutas:0, pCobrados:0, pNoCobrados:0, anulados:0 };
+    const prevStats = d2 ? buildTxStats(d2.orders, dayLimit) : { validOrders:0, brutas:0, pCobrados:0, pNoCobrados:0, anulados:0, pCobradosVal:0 };
 
     /* 1. CALCULOS CAJA Y SALUD */
     const cajaActual = (m.bancoCuenta||0) + (m.saldoMP||0) + (m.efectivoCaja||0) + (m.inversiones||0);
@@ -492,25 +492,86 @@ function coreLogic(d1, d2, m1) {
 
     // Global Ventas
     const glob = d1.globalStats || { totalBruto:0, totalCobrado:0, deudaMoto:0, deudaContraReembolso:0 };
+    // ── 2.1 Tasa de conversión a cobro ──
+    const tasaCobro = curStats.brutas > 0 ? (curStats.pCobradosVal / curStats.brutas * 100) : 0;
+    const prevTasaCobro = prevStats.brutas > 0 ? ((prevStats.pCobradosVal||0) / prevStats.brutas * 100) : 0;
+    
     drawGrid('rowGlobal', [
         { label: 'Ventas de Este Mes', val: curStats.brutas, prev: prevStats.brutas, t: 'cur',
           info: { desc:'Facturación MTD ignorando anulados.', calc:`Las ventas brutas acumuladas sumando todos los reportes del mes.`} },
         { label: 'Cobradas Este Mes', val: curStats.pCobradosVal, prev: 0, t: 'cur', hideDelta:true,
           info: { desc:'Dinero efectivamente cobrado este mes.', calc:`Total con status COBRADO sobre los pedidos de este mes.`} },
+        { label: 'Tasa de Cobro', val: tasaCobro, prev: prevTasaCobro, t: 'pct',
+          info: { desc:'Porcentaje de lo facturado que ya fue cobrado. Ideal: >70%.', calc:`Cobrado: ${fmt(curStats.pCobradosVal)}<br>Facturado: ${fmt(curStats.brutas)}<hr/>Tasa = ${fmt(tasaCobro,'dec')}%${prevTasaCobro > 0 ? '<br>Mes anterior: ' + fmt(prevTasaCobro,'dec') + '%' : ''}`} },
         { label: 'Facturación Histórica', val: glob.totalBruto, prev: 0, t: 'cur', hideDelta:true,
           info: { desc:'Ventas totales netas desde la creación.', calc:`Suma global historica de todos los meses de la empresa ignorando cancelados.`} }
     ]);
+
+    // ── 2.2 DSO estimado (Days Sales Outstanding) ──
+    // Estimamos: si la tasa de cobro es X% en N días transcurridos, 
+    // el DSO ≈ días transcurridos × (1 - tasaCobro/100) / (tasaCobro/100) + días transcurridos/2
+    // Simplificación práctica: DSO = días del mes × (deuda pendiente / facturado total)
+    const deudaMes = curStats.brutas - curStats.pCobradosVal;
+    const diasTranscurridos = dayLimit;
+    const dsoEstimado = curStats.brutas > 0 ? Math.round(diasTranscurridos * (deudaMes / curStats.brutas)) : 0;
+    const prevDeudaMes = prevStats.brutas - (prevStats.pCobradosVal||0);
+    const prevDso = prevStats.brutas > 0 ? Math.round(dayLimit * (prevDeudaMes / prevStats.brutas)) : 0;
+
+    // ── 2.3 Aging de deuda ──
+    // Clasificar pedidos pendientes por antigüedad
+    const agingBuckets = { '0-7 días': 0, '8-15 días': 0, '16-30 días': 0, '30+ días': 0 };
+    const agingColors = { '0-7 días': '#637c6c', '8-15 días': '#d4a373', '16-30 días': '#b56b6b', '30+ días': '#7f1d1d' };
+    const pendingOrders = (d1.orders || []).filter(o => o.status !== 'COBRADO' && o.status !== 'ANULADO');
+    
+    pendingOrders.forEach(o => {
+        const orderDate = new Date(o.date);
+        const diffDays = Math.floor((today - orderDate) / (1000*60*60*24));
+        if (diffDays <= 7) agingBuckets['0-7 días'] += o.amount;
+        else if (diffDays <= 15) agingBuckets['8-15 días'] += o.amount;
+        else if (diffDays <= 30) agingBuckets['16-30 días'] += o.amount;
+        else agingBuckets['30+ días'] += o.amount;
+    });
+    
+    const totalPending = Object.values(agingBuckets).reduce((a,b) => a+b, 0);
+    
+    // Build aging bar HTML
+    let agingBarHtml = '';
+    if (totalPending > 0) {
+        const segments = Object.entries(agingBuckets)
+            .filter(([,v]) => v > 0)
+            .map(([label, val]) => {
+                const pct = (val / totalPending * 100);
+                return `<div style="width:${pct}%; background:${agingColors[label]}; height:100%; border-radius:3px; min-width:2px;" title="${label}: ${fmt(val)} (${pct.toFixed(0)}%)"></div>`;
+            }).join('');
+        
+        const legend = Object.entries(agingBuckets)
+            .filter(([,v]) => v > 0)
+            .map(([label, val]) => `<span style="display:inline-flex; align-items:center; gap:4px; font-size:0.75rem; color:var(--text-sec);"><span style="width:8px; height:8px; border-radius:2px; background:${agingColors[label]};"></span>${label}: ${fmt(val)}</span>`)
+            .join('  ');
+        
+        agingBarHtml = `<div style="display:flex; flex-direction:column; gap:6px;">
+            <div style="font-weight:700; font-size:1.1rem;">${fmt(totalPending)}</div>
+            <div style="display:flex; gap:2px; height:8px; border-radius:4px; overflow:hidden; background:var(--bg-body);">${segments}</div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:2px;">${legend}</div>
+        </div>`;
+    } else {
+        agingBarHtml = `<div style="font-weight:700; color:var(--success);">Sin deuda pendiente</div>`;
+    }
 
     drawGrid('rowHealth', [
         { label: 'Caja Total (Acumulada a la fecha)', val: cajaAcumulada, prev: 0, t: 'cur', hideDelta:true,
           info: { desc:'Suma de la caja con el mes anterior.', calc:`Caja Actual: ${fmt(cajaActual)}<br>Caja Anterior: ${fmt(prevCajaActual)}<hr/>Acumulado = ${fmt(cajaAcumulada)}` } },
         { label: 'Caja Actual (Mes en curso)', val: cajaActual, prev: 0, t: 'cur', hideDelta:true,
           info: { desc:'Dinero en tiempo real ingresado en Datos Manuales.', calc:`Banco: ${fmt(m.bancoCuenta||0)}<br>MP: ${fmt(m.saldoMP||0)}<br>Efectivo: ${fmt(m.efectivoCaja||0)}<br>Inversiones: ${fmt(m.inversiones||0)}<hr/>Total: ${fmt(cajaActual)}`} },
+        { label: 'DSO (Días de Cobro)', val: dsoEstimado, prev: prevDso, t: 'num', inv: true,
+          info: { desc:'Estimación de cuántos días tarda en cobrarse lo facturado. Menor es mejor.', calc:`Deuda pendiente: ${fmt(deudaMes)}<br>Facturado total: ${fmt(curStats.brutas)}<br>Días transcurridos: ${diasTranscurridos}<hr/>DSO ≈ ${dsoEstimado} días${prevDso > 0 ? '<br>Mes anterior: ' + prevDso + ' días' : ''}`} },
         { label: 'Inversión sobre Facturado', val: invVsVentas, prev: 0, t: 'pct', hideDelta:true,
           info: { desc:'Mide cuán eficiente es tu gasto en pauta. Recomendado <= 10%.', calc:`Inversión en Publicidad: ${fmt(impAds)}<br>Total Facturado (Bruto): ${fmt(curStats.brutas)}<hr/>Proporción = ${fmt(invVsVentas,'dec')}%` } },
         { label: 'Margen Operativo', val: margenNeto, prev: 0, t: 'pct', hideDelta:true,
-          info: { desc:'Porcentaje de rentabilidad pura versus Ventas con status COBRADO.', calc:`Ventas Cobradas: ${fmt(curStats.pCobradosVal)}<br>- Inversión Publicidad & Marketing: ${fmt(impAds+gMkt)}<br>- Gastos Operativos Fijos: ${fmt(ops)}<br>- Costo Beato: ${fmt(sl.costoBeato)}<br>- Costo Logística: ${fmt(sl.costoLogistica)}<hr/>Ganancia Libre = ${fmt(gananciaNeta)}<br>Margen = ${fmt(margenNeto,'dec')}%` } }
-    ]);
+          info: { desc:'Porcentaje de rentabilidad pura versus Ventas con status COBRADO.', calc:`Ventas Cobradas: ${fmt(curStats.pCobradosVal)}<br>- Inversión Publicidad & Marketing: ${fmt(impAds+gMkt)}<br>- Gastos Operativos Fijos: ${fmt(ops)}<br>- Costo Beato: ${fmt(sl.costoBeato)}<br>- Costo Logística: ${fmt(sl.costoLogistica)}<hr/>Ganancia Libre = ${fmt(gananciaNeta)}<br>Margen = ${fmt(margenNeto,'dec')}%` } },
+        { label: 'Deuda por Antigüedad', val: agingBarHtml, prev: 0, t: 'raw', hideDelta:true,
+          info: { desc:'Deuda pendiente clasificada por antigüedad. La deuda vieja (30+ días) es la más riesgosa.', calc:`0-7 días: ${fmt(agingBuckets['0-7 días'])}<br>8-15 días: ${fmt(agingBuckets['8-15 días'])}<br>16-30 días: ${fmt(agingBuckets['16-30 días'])}<br>30+ días: ${fmt(agingBuckets['30+ días'])}<hr/>Total pendiente: ${fmt(totalPending)}`} }
+    ], 'repeat(3, 1fr)');
 
     /* 2. RIESGO Y CHEQUES REDESIGN */
     renderRiskWidget(d1, cajaActual);
