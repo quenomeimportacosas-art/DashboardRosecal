@@ -101,14 +101,14 @@ var gasBackend = {
 
             var targetDate = p.month ? new Date(p.month + '-01T12:00:00') : new Date();
             
-            var condicionesMap = this.readCondiciones(ss);
-            var orders = this.readOrders(ss, targetDate, condicionesMap);
+            var orders = this.readOrders(ss, targetDate);
             var monthly = this.readMonthlySummary(ss);
             var rawGanancias = this.readRawGanancias(ss, targetDate);
             var cheques = this.readCheques(ss);
             var manual = this.readManualData(ss, targetDate);
+            var pendingWithCond = this.readPendingWithCondicion(ss);
             
-            var result = this.buildResponse(orders, monthly, rawGanancias, cheques, manual, targetDate);
+            var result = this.buildResponse(orders, monthly, rawGanancias, cheques, manual, targetDate, pendingWithCond);
             return this.jsonOut(result);
 
         } catch (err) {
@@ -186,28 +186,28 @@ var gasBackend = {
         return { deudaClientes: deudaClientes, totalFacturado: totalFacturado };
     },
 
-    // Lee condiciones de pedido desde "Respuestas de formulario 1"
-    // Devuelve un mapa: "fecha|importe" → condición para cruzar con Calculo Ganancias
-    readCondiciones: function(ss) {
+    // Lee pedidos pendientes con condición desde "Respuestas de formulario 1"
+    readPendingWithCondicion: function(ss) {
         var sheet = ss.getSheetByName('Respuestas de formulario 1');
-        if (!sheet) return {};
+        if (!sheet) return [];
         var data = sheet.getDataRange().getValues();
-        if (data.length < 2) return {};
+        if (data.length < 2) return [];
         var h = data[0].map(function(k){ return String(k).trim().toLowerCase() });
         
         var ci = {
             fecha: this.findCol(h, 'marca temporal', 'fecha'),
-            importe: this.findCol(h, 'importe factur', 'importe original', 'importe'),
+            importe: this.findCol(h, 'importe factur', 'importe'),
+            status: this.findCol(h, 'status del', 'status'),
             condicion: this.findCol(h, 'condicion', 'condición')
         };
         if (ci.fecha < 0) ci.fecha = 0;
-        if (ci.importe < 0) ci.importe = 1;
-        if (ci.condicion < 0) return {};
+        if (ci.condicion < 0) return []; // No tiene columna condición
         
-        var mapa = {};
+        var pending = [];
         for (var i = 1; i < data.length; i++) {
             var r = data[i];
             if (!r[ci.fecha]) continue;
+            
             var localDate = null;
             if (r[ci.fecha] instanceof Date) localDate = r[ci.fecha];
             else {
@@ -215,17 +215,24 @@ var gasBackend = {
                 if (!isNaN(parsed.getTime())) localDate = parsed;
             }
             if (!localDate) continue;
-            var dateStr = localDate.getFullYear() + '-' + this.padZero(localDate.getMonth() + 1) + '-' + this.padZero(localDate.getDate());
-            var imp = this.parseAmount(r[ci.importe]);
+            
+            var tsFull = localDate.getFullYear() + '-' + this.padZero(localDate.getMonth() + 1) + '-' + this.padZero(localDate.getDate()) + 'T' + this.padZero(localDate.getHours()) + ':' + this.padZero(localDate.getMinutes()) + ':00';
+            
+            var imp = ci.importe >= 0 ? this.parseAmount(r[ci.importe]) : 0;
+            if (imp <= 0) continue;
+            
+            var st = ci.status >= 0 ? String(r[ci.status] || '').trim().toUpperCase() : '';
             var cond = String(r[ci.condicion] || '').trim().toUpperCase();
-            // Clave: fecha + importe para cruzar
-            var key = dateStr + '|' + Math.round(imp);
-            mapa[key] = cond;
+            
+            // Solo pendientes (no cobrados ni anulados)
+            if (st !== 'COBRADO' && st !== 'ANULADO') {
+                pending.push({ date: tsFull, amount: imp, status: st, condicion: cond });
+            }
         }
-        return mapa;
+        return pending;
     },
 
-    readOrders: function(ss, targetDate, condicionesMap) {
+    readOrders: function(ss, targetDate) {
         var sheet = ss.getSheetByName('Calculo Ganancias');
         if (!sheet) return { current: [], global: { totalBruto: 0, totalCobrado: 0, porMes: {}, totalDeuda: 0 } };
         var data = sheet.getDataRange().getValues();
@@ -270,11 +277,6 @@ var gasBackend = {
 
             var st = String(r[ci.status] || '').trim().toUpperCase();
             
-            // Buscar condición del pedido cruzando con Respuestas de formulario
-            var dateOnly = tsFull.substring(0, 10);
-            var condKey = dateOnly + '|' + Math.round(imp);
-            var condicion = (condicionesMap && condicionesMap[condKey]) ? condicionesMap[condKey] : '';
-            
             if (st !== 'ANULADO') {
                 glob.totalBruto += imp;
                 if (!glob.porMes[yMonth]) glob.porMes[yMonth] = { bruto: 0, cobrado: 0 };
@@ -286,7 +288,7 @@ var gasBackend = {
                 } else {
                     glob.totalDeuda += imp;
                     // Recolectar TODOS los pedidos pendientes de cualquier mes
-                    pendingAll.push({ date: tsFull, amount: imp, status: st, condicion: condicion });
+                    pendingAll.push({ date: tsFull, amount: imp, status: st });
                 }
             }
             
@@ -294,8 +296,7 @@ var gasBackend = {
                 orders.push({
                     date: tsFull,
                     amount: imp,
-                    status: st,
-                    condicion: condicion
+                    status: st
                 });
             }
         }
@@ -350,7 +351,7 @@ var gasBackend = {
         return cheques;
     },
 
-    buildResponse: function(orders, monthly, rawGanancias, cheques, manual, targetDate) {
+    buildResponse: function(orders, monthly, rawGanancias, cheques, manual, targetDate, pendingWithCond) {
         var currentMonthName = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][targetDate.getMonth()];
         var curYearMonth = targetDate.getFullYear() + '-' + this.padZero(targetDate.getMonth() + 1);
         
@@ -374,7 +375,7 @@ var gasBackend = {
             chequesActivos: cheques,
             totalChequesActivos: totalChequesActivos,
             orders: orders.current, // Export full month orders with FULL timestamp
-            pendingAll: orders.pendingAll, // Todos los pedidos pendientes de cualquier mes
+            pendingAll: (pendingWithCond && pendingWithCond.length > 0) ? pendingWithCond : orders.pendingAll, // Preferir datos de Respuestas (con condición)
             globalStats: orders.global // Agregado para histórico
         };
     },
