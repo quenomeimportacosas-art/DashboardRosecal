@@ -754,9 +754,6 @@ function coreLogic(d1, d2, m1) {
             }
         }]
     });
-            }
-        }
-    });
     
     // Second grid: Anulados, Flete, Publicidad, Cantidad ventas
     drawGrid('rowGlobal2', [
@@ -1758,7 +1755,6 @@ window._authToken = null;
 
 function handleGoogleLogin(response) {
     const token = response.credential;
-    // Decode JWT payload to get email
     const payload = JSON.parse(atob(token.split('.')[1]));
     const email = payload.email;
     
@@ -1768,14 +1764,13 @@ function handleGoogleLogin(response) {
         return;
     }
     
-    // Auth OK
     window._authToken = token;
+    try { sessionStorage.setItem('rosecal_auth', JSON.stringify({ token: token, exp: Date.now() + 3600000 })); } catch(e) {}
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('dashboardWrapper').style.display = 'block';
     renderDashboard();
 }
 
-// Check if already logged in (session)
 function checkExistingSession() {
     try {
         const saved = sessionStorage.getItem('rosecal_auth');
@@ -1793,21 +1788,8 @@ function checkExistingSession() {
     return false;
 }
 
-// Override renderDashboard to not auto-run — wait for auth
-const _origRenderDashboard = renderDashboard;
-
-// Save session after successful auth
-const _origHandleLogin = handleGoogleLogin;
-window.handleGoogleLogin = function(response) {
-    _origHandleLogin(response);
-    if (window._authToken) {
-        try { sessionStorage.setItem('rosecal_auth', JSON.stringify({ token: window._authToken, exp: Date.now() + 3600000 })); } catch(e) {}
-    }
-};
-
-// On page load: check session or show login
 if (!checkExistingSession()) {
-    // Login screen is already visible
+    // Login screen visible
 }
 </script>
 </div><!-- close dashboardWrapper -->
