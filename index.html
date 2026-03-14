@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -102,6 +103,15 @@
         .badge-small { padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 500; }
 
         .cheque-banner { display: none; } /* Hide old banner */
+
+        /* Edit Layout Mode */
+        .dashboard-section { transition: all 0.2s ease; border-radius: 8px; }
+        .edit-mode .dashboard-section { border: 2px dashed var(--border); padding: 12px; margin-bottom: 16px; background: var(--bg-body); cursor: grab; }
+        .edit-mode .dashboard-section:active { cursor: grabbing; }
+        .edit-mode .dashboard-section.sortable-ghost { opacity: 0.3; background: var(--success-bg); border-color: var(--success); }
+        .edit-mode .dashboard-section.sortable-chosen { box-shadow: 0 8px 25px rgba(0,0,0,0.15); transform: scale(1.01); }
+        .edit-mode .drag-handle { display: inline-block !important; }
+        .btn-editing { background: var(--success) !important; color: #fff !important; border-color: var(--success) !important; }
 
         .charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 32px; }
         
@@ -229,29 +239,42 @@
         </div>
         <button class="btn btn-primary" onclick="openModal()">Ingresar Datos Manuales</button>
         <button class="btn" onclick="renderDashboard()">Recargar</button>
+        <button class="btn" id="btnEditLayout" onclick="toggleEditLayout()" style="margin-left:auto;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7m-3 12V9m6 6V9"/></svg>
+            Editar Layout
+        </button>
     </div>
 
+    <div id="sectionsContainer">
     <!-- Fila Global de Ventas -->
-    <div class="section-header">Panel Global de Ventas</div>
-    <div class="metrics-grid" id="rowGlobal"></div>
+    <div class="dashboard-section" data-section="global">
+        <div class="section-header"><span class="drag-handle" style="display:none; cursor:grab; margin-right:8px; color:var(--text-muted);">⠿</span>Panel Global de Ventas</div>
+        <div class="metrics-grid" id="rowGlobal"></div>
+    </div>
 
     <!-- Compromiso del Mes -->
-    <div class="section-header">Compromiso del Mes</div>
-    <div class="metrics-grid" id="rowCompromiso"></div>
+    <div class="dashboard-section" data-section="compromiso">
+        <div class="section-header"><span class="drag-handle" style="display:none; cursor:grab; margin-right:8px; color:var(--text-muted);">⠿</span>Compromiso del Mes</div>
+        <div class="metrics-grid" id="rowCompromiso"></div>
+    </div>
 
     <!-- Primera Fila: Salud -->
-    <div class="section-header" style="display:flex; align-items:center; flex-wrap:wrap; gap:12px;">
-        Salud Financiera 
-        <button style="font-size:0.75rem; padding:6px 12px; display:inline-flex; align-items:center; gap:6px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border); border-radius:6px; box-shadow:0 1px 2px rgba(0,0,0,0.02); cursor:pointer; font-weight:500; font-family:inherit; transition: background 0.15s;" onmouseover="this.style.background='var(--bg-body)'" onmouseout="this.style.background='var(--bg-card)'" onclick="openModal()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-            Ingresar Datos
-        </button>
-        <span style="font-size:0.7rem; font-weight:normal; background:var(--bg-body); padding:4px 8px; border-radius:4px; border:1px solid var(--border); margin-left:auto;" id="lblMtdInfo"></span>
+    <div class="dashboard-section" data-section="salud">
+        <div class="section-header" style="display:flex; align-items:center; flex-wrap:wrap; gap:12px;">
+            <span class="drag-handle" style="display:none; cursor:grab; margin-right:8px; color:var(--text-muted);">⠿</span>
+            Salud Financiera 
+            <button style="font-size:0.75rem; padding:6px 12px; display:inline-flex; align-items:center; gap:6px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border); border-radius:6px; box-shadow:0 1px 2px rgba(0,0,0,0.02); cursor:pointer; font-weight:500; font-family:inherit; transition: background 0.15s;" onmouseover="this.style.background='var(--bg-body)'" onmouseout="this.style.background='var(--bg-card)'" onclick="openModal()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                Ingresar Datos
+            </button>
+            <span style="font-size:0.7rem; font-weight:normal; background:var(--bg-body); padding:4px 8px; border-radius:4px; border:1px solid var(--border); margin-left:auto;" id="lblMtdInfo"></span>
+        </div>
+        <div class="metrics-grid" id="rowHealth"></div>
     </div>
-    <div class="metrics-grid" id="rowHealth"></div>
 
     <!-- Segunda Fila: Riesgo -->
-    <div class="section-header">Riesgo Financiero</div>
+    <div class="dashboard-section" data-section="riesgo">
+        <div class="section-header"><span class="drag-handle" style="display:none; cursor:grab; margin-right:8px; color:var(--text-muted);">⠿</span>Riesgo Financiero</div>
     <div class="metric-card" style="margin-bottom: 32px; padding: 24px;">
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('risk-resumen', this)">Resumen</button>
@@ -308,12 +331,16 @@
     </div>
     <div id="checkBannerContainer" style="display:none;"></div>
     <div class="metrics-grid" id="rowRisk" style="display:none;"></div>
+    </div><!-- close riesgo section -->
 
     <!-- Tercera Fila: Crecimiento -->
-    <div class="section-header">Motor de Crecimiento</div>
-    <div class="metrics-grid" id="rowGrowth"></div>
+    <div class="dashboard-section" data-section="crecimiento">
+        <div class="section-header"><span class="drag-handle" style="display:none; cursor:grab; margin-right:8px; color:var(--text-muted);">⠿</span>Motor de Crecimiento</div>
+        <div class="metrics-grid" id="rowGrowth"></div>
+    </div>
 
     <!-- Gráficos -->
+    <div class="dashboard-section" data-section="graficos">
     <div class="charts-row">
         <div class="metric-card" style="padding:24px;">
             <div class="metric-title" style="margin-bottom:24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
@@ -332,6 +359,9 @@
             <div class="chart-container" style="height:280px;"><canvas id="chartHours"></canvas></div>
         </div>
         </div>
+    </div><!-- close graficos section -->
+
+    </div><!-- close sectionsContainer -->
 
 </div>
 
@@ -1462,6 +1492,63 @@ window.addEventListener('resize', () => {
         else el.style.gridTemplateColumns = el.getAttribute('data-cols-rule');
     });
 });
+
+// ── EDIT LAYOUT ──
+let layoutSortable = null;
+let isEditMode = false;
+
+function toggleEditLayout() {
+    isEditMode = !isEditMode;
+    const container = document.getElementById('sectionsContainer');
+    const btn = document.getElementById('btnEditLayout');
+    
+    if (isEditMode) {
+        container.classList.add('edit-mode');
+        btn.classList.add('btn-editing');
+        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Guardar Layout';
+        
+        // Init SortableJS
+        if (!layoutSortable) {
+            layoutSortable = Sortable.create(container, {
+                animation: 200,
+                handle: '.dashboard-section',
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                dragClass: 'sortable-drag',
+                easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+            });
+        }
+        layoutSortable.option('disabled', false);
+    } else {
+        container.classList.remove('edit-mode');
+        btn.classList.remove('btn-editing');
+        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7m-3 12V9m6 6V9"/></svg> Editar Layout';
+        
+        if (layoutSortable) layoutSortable.option('disabled', true);
+        
+        // Save order to localStorage
+        const order = Array.from(container.querySelectorAll('.dashboard-section')).map(el => el.dataset.section);
+        try { localStorage.setItem('rosecal_layout', JSON.stringify(order)); } catch(e) {}
+    }
+}
+
+function restoreLayout() {
+    try {
+        const saved = localStorage.getItem('rosecal_layout');
+        if (!saved) return;
+        const order = JSON.parse(saved);
+        const container = document.getElementById('sectionsContainer');
+        if (!container) return;
+        
+        order.forEach(sectionId => {
+            const el = container.querySelector('[data-section="' + sectionId + '"]');
+            if (el) container.appendChild(el);
+        });
+    } catch(e) {}
+}
+
+// Restore layout on load
+document.addEventListener('DOMContentLoaded', restoreLayout);
 
 // ── AUTH ──
 const ALLOWED_EMAILS = ['rosecaloficial@gmail.com','damianap9@gmail.com','damianp@poletdigital.com','llaverosvisibles@gmail.com','martinp10105@gmail.com'];
