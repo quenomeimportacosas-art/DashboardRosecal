@@ -101,7 +101,8 @@ var gasBackend = {
 
             var targetDate = p.month ? new Date(p.month + '-01T12:00:00') : new Date();
             
-            var orders = this.readOrders(ss, targetDate);
+            var condicionesMap = this.readCondiciones(ss);
+            var orders = this.readOrders(ss, targetDate, condicionesMap);
             var monthly = this.readMonthlySummary(ss);
             var rawGanancias = this.readRawGanancias(ss, targetDate);
             var cheques = this.readCheques(ss);
@@ -185,7 +186,46 @@ var gasBackend = {
         return { deudaClientes: deudaClientes, totalFacturado: totalFacturado };
     },
 
-    readOrders: function(ss, targetDate) {
+    // Lee condiciones de pedido desde "Respuestas de formulario 1"
+    // Devuelve un mapa: "fecha|importe" → condición para cruzar con Calculo Ganancias
+    readCondiciones: function(ss) {
+        var sheet = ss.getSheetByName('Respuestas de formulario 1');
+        if (!sheet) return {};
+        var data = sheet.getDataRange().getValues();
+        if (data.length < 2) return {};
+        var h = data[0].map(function(k){ return String(k).trim().toLowerCase() });
+        
+        var ci = {
+            fecha: this.findCol(h, 'marca temporal', 'fecha'),
+            importe: this.findCol(h, 'importe factur', 'importe original', 'importe'),
+            condicion: this.findCol(h, 'condicion', 'condición')
+        };
+        if (ci.fecha < 0) ci.fecha = 0;
+        if (ci.importe < 0) ci.importe = 1;
+        if (ci.condicion < 0) return {};
+        
+        var mapa = {};
+        for (var i = 1; i < data.length; i++) {
+            var r = data[i];
+            if (!r[ci.fecha]) continue;
+            var localDate = null;
+            if (r[ci.fecha] instanceof Date) localDate = r[ci.fecha];
+            else {
+                var parsed = new Date(r[ci.fecha]);
+                if (!isNaN(parsed.getTime())) localDate = parsed;
+            }
+            if (!localDate) continue;
+            var dateStr = localDate.getFullYear() + '-' + this.padZero(localDate.getMonth() + 1) + '-' + this.padZero(localDate.getDate());
+            var imp = this.parseAmount(r[ci.importe]);
+            var cond = String(r[ci.condicion] || '').trim().toUpperCase();
+            // Clave: fecha + importe para cruzar
+            var key = dateStr + '|' + Math.round(imp);
+            mapa[key] = cond;
+        }
+        return mapa;
+    },
+
+    readOrders: function(ss, targetDate, condicionesMap) {
         var sheet = ss.getSheetByName('Calculo Ganancias');
         if (!sheet) return { current: [], global: { totalBruto: 0, totalCobrado: 0, porMes: {}, totalDeuda: 0 } };
         var data = sheet.getDataRange().getValues();
@@ -230,6 +270,11 @@ var gasBackend = {
 
             var st = String(r[ci.status] || '').trim().toUpperCase();
             
+            // Buscar condición del pedido cruzando con Respuestas de formulario
+            var dateOnly = tsFull.substring(0, 10);
+            var condKey = dateOnly + '|' + Math.round(imp);
+            var condicion = (condicionesMap && condicionesMap[condKey]) ? condicionesMap[condKey] : '';
+            
             if (st !== 'ANULADO') {
                 glob.totalBruto += imp;
                 if (!glob.porMes[yMonth]) glob.porMes[yMonth] = { bruto: 0, cobrado: 0 };
@@ -241,7 +286,7 @@ var gasBackend = {
                 } else {
                     glob.totalDeuda += imp;
                     // Recolectar TODOS los pedidos pendientes de cualquier mes
-                    pendingAll.push({ date: tsFull, amount: imp, status: st });
+                    pendingAll.push({ date: tsFull, amount: imp, status: st, condicion: condicion });
                 }
             }
             
@@ -249,7 +294,8 @@ var gasBackend = {
                 orders.push({
                     date: tsFull,
                     amount: imp,
-                    status: st
+                    status: st,
+                    condicion: condicion
                 });
             }
         }
