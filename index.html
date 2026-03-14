@@ -397,14 +397,32 @@ function formatDDMMAA(isoString) {
 }
 function calcDelta(cur,prev) { return prev ? ((cur-prev)/Math.abs(prev)*100) : 0; }
 
+// ── Cache + Proxy ──
+const API_PROXY = '/api/data';
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+
+function getCacheKey(month) { return 'rosecal_' + (month || 'current'); }
+
+function getFromCache(month) {
+    try {
+        const raw = localStorage.getItem(getCacheKey(month));
+        if (!raw) return null;
+        const cached = JSON.parse(raw);
+        if (Date.now() - cached._ts > CACHE_TTL) return { data: cached.data, stale: true };
+        return { data: cached.data, stale: false };
+    } catch(e) { return null; }
+}
+
+function saveToCache(month, data) {
+    try { localStorage.setItem(getCacheKey(month), JSON.stringify({ data, _ts: Date.now() })); } catch(e) {}
+}
+
 async function fetchAPI(month) {
-    let url = APPS_SCRIPT_URL + '?action=read' + (month ? '&month='+month : '');
-    try { const r = await fetch(url); return await r.json(); } catch(e) { console.error(e); return { error:true }; }
+    let url = API_PROXY + '?action=read' + (month ? '&month='+month : '');
+    try { const r = await fetch(url); const d = await r.json(); if(d && !d.error) saveToCache(month, d); return d; } catch(e) { console.error(e); return { error:true }; }
 }
 
 async function renderDashboard() {
-    document.getElementById('dashboardLoader').classList.add('active');
-    
     let m1 = document.getElementById('globalMonth').value;
     let m2 = document.getElementById('compareMonth').value;
     if(!m1) {
@@ -413,13 +431,31 @@ async function renderDashboard() {
         document.getElementById('globalMonth').value = m1;
     }
     
+    // 1. Intentar mostrar desde cache inmediatamente
+    const c1 = getFromCache(m1);
+    const c2 = m2 ? getFromCache(m2) : null;
+    
+    if (c1 && c1.data && c1.data.orders) {
+        // Render instantáneo con cache
+        currentData = c1.data;
+        coreLogic(c1.data, c2 ? c2.data : null, m1);
+        
+        // Si está fresco, no recargar
+        if (!c1.stale && (!m2 || (c2 && !c2.stale))) return;
+    } else {
+        // Sin cache: mostrar loader
+        document.getElementById('dashboardLoader').classList.add('active');
+    }
+    
+    // 2. Fetch fresco en background (o foreground si no había cache)
     const [d1, d2] = await Promise.all([ fetchAPI(m1), m2 ? fetchAPI(m2) : Promise.resolve(null) ]);
     document.getElementById('dashboardLoader').classList.remove('active');
     
-    // Fallback if Apps Script is still running old logic
-    if(!d1 || d1.error || !d1.orders) { alert('Aún no configuraste el script V5 en Google Sheets o está actualizándose en Vercel. Ve al paso "Configurar Hojas", y luego Publicá como "Nueva versión".'); return; }
+    if(!d1 || d1.error || !d1.orders) {
+        if (!c1) alert('Aún no configuraste el script V5 en Google Sheets o está actualizándose en Vercel. Ve al paso "Configurar Hojas", y luego Publicá como "Nueva versión".');
+        return;
+    }
     currentData = d1;
-    
     coreLogic(d1, d2, m1);
 }
 
@@ -876,7 +912,7 @@ async function updateChequeStatus(numero, nuevoEstado) {
     try {
         await fetch(APPS_SCRIPT_URL + '?' + p.toString(), {mode:'no-cors'});
         // Wait bit for GS to apply
-        setTimeout(() => renderDashboard(), 1200);
+        try { Object.keys(localStorage).filter(k=>k.startsWith("rosecal_")).forEach(k=>localStorage.removeItem(k)); } catch(e){} setTimeout(() => renderDashboard(), 1200);
     } catch(e) {
         alert('Error al actualizar estado.');
         document.getElementById('dashboardLoader').classList.remove('active');
@@ -955,7 +991,7 @@ async function saveData() {
     try {
         await fetch(APPS_SCRIPT_URL + '?' + p.toString(), {mode:'no-cors'});
         closeModal();
-        setTimeout(()=>renderDashboard(), 1500);
+        try { Object.keys(localStorage).filter(k=>k.startsWith("rosecal_")).forEach(k=>localStorage.removeItem(k)); } catch(e){} setTimeout(()=>renderDashboard(), 1500);
     } catch(e) { alert('Error al guardar.'); }
     document.getElementById('btnSave').innerText = 'Guardar Datos';
 }
@@ -1265,7 +1301,7 @@ async function markChequeAsPaid(numero) {
     const p = new URLSearchParams({ action: 'update_cheque', numero: numero, nuevoEstado: 'PAGADO' });
     try {
         await fetch(APPS_SCRIPT_URL + '?' + p.toString(), {mode:'no-cors'});
-        setTimeout(()=>renderDashboard(), 1500);
+        try { Object.keys(localStorage).filter(k=>k.startsWith("rosecal_")).forEach(k=>localStorage.removeItem(k)); } catch(e){} setTimeout(()=>renderDashboard(), 1500);
     } catch(e) { 
         alert('Hubo un error al comunicarse con la hoja.'); 
         document.getElementById('dashboardLoader').classList.remove('active'); 
