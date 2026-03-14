@@ -259,6 +259,12 @@
         <!-- Facturación y Ritmo -->
         <div class="metrics-grid" id="rowCompromiso" style="margin-top:0;"></div>
         
+        <!-- Flujo de Caja chart grande -->
+        <div class="metric-card" style="padding:24px; margin-bottom:16px;">
+            <div class="metric-title" style="margin-bottom:16px;">Flujo de Caja Proyectado</div>
+            <div class="chart-container" style="height:280px;"><canvas id="chartFlujoCaja"></canvas></div>
+        </div>
+        
         <!-- Evolución del Negocio inline -->
         <div class="metric-card" style="padding:24px; margin-bottom:16px;">
             <div class="metric-title" style="margin-bottom:24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
@@ -894,14 +900,84 @@ function coreLogic(d1, d2, m1) {
 
     drawGrid('rowCompromiso', [
         { label: 'Facturaci\u00f3n Necesaria', val: factNecHtml, prev: 0, t: 'raw', hideDelta:true,
-          info: { desc:'Bas\u00e1ndose en tu facturaci\u00f3n promedio desde febrero y 40% de ganancia, cu\u00e1nto necesit\u00e1s facturar por mes.', calc:'Facturaci\u00f3n promedio (feb+): ' + fmt(factPromHistorica) + '/mes<br>Ganancia proyectada (40%): ' + fmt(gananciaProyMensual) + '/mes<hr/>' + (cumpleRitmo ? 'Tu ritmo actual cubre todos los pagos' : 'Necesit\u00e1s facturar ' + fmt(factNecMensual) + '/mes para cubrir')} },
+          info: { desc:'Bas\u00e1ndose en tu facturaci\u00f3n promedio desde febrero y 40% de ganancia.', calc:'Facturaci\u00f3n promedio (feb+): ' + fmt(factPromHistorica) + '/mes<br>Ganancia proyectada (40%): ' + fmt(gananciaProyMensual) + '/mes<hr/>' + (cumpleRitmo ? 'Tu ritmo actual cubre todos los pagos' : 'Necesit\u00e1s facturar ' + fmt(factNecMensual) + '/mes para cubrir')} },
         { label: 'Ritmo Actual', val: ritmoHtml, prev: 0, t: 'raw', hideDelta:true,
           info: { desc:'\u00bfTu facturaci\u00f3n hist\u00f3rica genera suficiente ganancia mes a mes?', calc:'Meses analizados: ' + mesesHistoricos.join(', ') + '<br>Promedio mensual: ' + fmt(factPromHistorica) + '<br>Ganancia mensual: ' + fmt(gananciaProyMensual) + '<hr/>' + (cumpleRitmo ? 'Todos los meses cubiertos' : 'Primer problema en: ' + (mesConProblema||'-'))} },
-        { label: 'Flujo de Caja Proyectado', val: flujoHtml, prev: 0, t: 'raw', hideDelta:true,
-          info: { desc:'Simulaci\u00f3n mes a mes: caja + ganancia - cheques. Verde = cubierto, rojo = faltante.', calc:'Caja inicial: ' + fmt(cajaAcumulada) + '<br>Ganancia mensual proy.: ' + fmt(gananciaProyMensual) + '<hr/>' + flujoMeses.map(function(m){ return m.mesLabel + ': pagar ' + fmt(m.chequesMes) + ' \u2192 caja ' + fmt(m.cajaPost); }).join('<br>')} },
         { label: 'Cobertura Este Mes', val: coberturaMes, prev: 0, t: 'pct', hideDelta:true,
           info: { desc:'Caja total vs cheques de este mes.', calc:'Caja: ' + fmt(cajaAcumulada) + '<br>Cheques mes: ' + fmt(totalChequesPendMes) + '<hr/>Cobertura: ' + coberturaMes.toFixed(0) + '%'} }
     ]);
+    
+    // ── GRÁFICO FLUJO DE CAJA ──
+    if (charts.flujoCaja) charts.flujoCaja.destroy();
+    const flujoLabels = flujoMeses.map(m => m.mesLabel);
+    const flujoCajaData = flujoMeses.map(m => m.cajaPost);
+    const flujoChequesData = flujoMeses.map(m => -m.chequesMes);
+    const flujoGananciaData = flujoMeses.map(m => m.ganancia);
+    const flujoBgColors = flujoMeses.map(m => m.ok ? 'rgba(99,124,108,0.7)' : 'rgba(181,107,107,0.7)');
+    
+    charts.flujoCaja = new Chart(document.getElementById('chartFlujoCaja'), {
+        type: 'bar',
+        data: {
+            labels: flujoLabels,
+            datasets: [
+                {
+                    label: 'Cheques a pagar',
+                    data: flujoChequesData,
+                    backgroundColor: 'rgba(181,107,107,0.6)',
+                    borderRadius: 4,
+                    order: 2
+                },
+                {
+                    label: 'Ganancia proyectada',
+                    data: flujoGananciaData,
+                    backgroundColor: 'rgba(99,124,108,0.5)',
+                    borderRadius: 4,
+                    order: 3
+                },
+                {
+                    label: 'Caja resultante',
+                    data: flujoCajaData,
+                    type: 'line',
+                    borderColor: '#18181b',
+                    backgroundColor: 'transparent',
+                    borderWidth: 2.5,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    pointBackgroundColor: flujoBgColors,
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    tension: 0.2,
+                    order: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { intersect: false, mode: 'index' },
+            plugins: {
+                legend: { display: true, position: 'bottom', labels: { usePointStyle: true, padding: 14, font: { size: 11 } } },
+                tooltip: {
+                    backgroundColor: '#18181b', titleColor: '#fff', padding: 12, cornerRadius: 4,
+                    callbacks: {
+                        label: function(ctx) {
+                            const v = ctx.raw;
+                            return ctx.dataset.label + ': ' + (v >= 0 ? '' : '-') + '$' + Math.abs(Math.round(v)).toLocaleString('es-AR');
+                        }
+                    }
+                },
+                annotation: {
+                    annotations: {
+                        zeroLine: { type: 'line', yMin: 0, yMax: 0, borderColor: '#e5e5e5', borderWidth: 1, borderDash: [4, 4] }
+                    }
+                }
+            },
+            scales: {
+                x: { grid: { display: false } },
+                y: { grid: { color: '#f4f4f5' }, ticks: { callback: v => (v >= 0 ? '' : '-') + '$' + (Math.abs(v)/1000000).toFixed(1) + 'M' } }
+            }
+        }
+    });
 
     // ── 2.2 DSO estimado por Condición de Pedido ──
     const deudaMes = curStats.brutas - curStats.pCobradosVal;
@@ -1057,7 +1133,7 @@ function coreLogic(d1, d2, m1) {
 
     /* 4. GRAFICOS */
     const ttip = { backgroundColor:'#18181b', titleColor:'#fff', padding:10, cornerRadius:4, bodyFont:{family:'Inter'} };
-    Object.entries(charts).forEach(([k,c]) => { if(k !== 'pieCobro' && k !== 'mainPanorama') c.destroy(); });
+    Object.entries(charts).forEach(([k,c]) => { if(k !== 'pieCobro' && k !== 'mainPanorama' && k !== 'flujoCaja') c.destroy(); });
     
     // Reservamos data en window para re-dibujar
     // Generar todos los días del 1 hasta hoy (o fin de mes si es mes pasado)
