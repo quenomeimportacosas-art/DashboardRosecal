@@ -208,6 +208,10 @@
     <div class="section-header">Panel Global de Ventas</div>
     <div class="metrics-grid" id="rowGlobal"></div>
 
+    <!-- Compromiso del Mes -->
+    <div class="section-header">Compromiso del Mes</div>
+    <div class="metrics-grid" id="rowCompromiso"></div>
+
     <!-- Primera Fila: Salud -->
     <div class="section-header" style="display:flex; align-items:center; flex-wrap:wrap; gap:12px;">
         Salud Financiera 
@@ -558,6 +562,69 @@ function coreLogic(d1, d2, m1) {
         { label: 'Facturación Histórica', val: glob.totalBruto, prev: 0, t: 'cur', hideDelta:true,
           info: { desc:'Ventas totales netas desde la creación.', calc:`Suma global historica de todos los meses de la empresa ignorando cancelados.`} }
     ]);
+
+    // ── COMPROMISO DEL MES ──
+    // Total cheques a pagar ESTE mes (pendientes, no pagados)
+    const chequesPendientesMes = (d1.chequesActivos || []).filter(c => {
+        if (!c.vencimiento) return false;
+        return c.vencimiento.substring(0, 7) === viewingMonth && c.estado !== 'PAGADO' && c.estado !== 'ANULADO';
+    });
+    const totalChequesPendMes = chequesPendientesMes.reduce((a, c) => a + c.monto, 0);
+    
+    // Total cheques pendientes TODOS los meses (deuda total)
+    const todosLosChequesPend = (d1.chequesActivos || []).filter(c => c.estado !== 'PAGADO' && c.estado !== 'ANULADO');
+    const totalChequesTotal = todosLosChequesPend.reduce((a, c) => a + c.monto, 0);
+    
+    // Días restantes del mes
+    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    const diasRestantes = lastDayOfMonth - today.getDate();
+    
+    // Facturación diaria necesaria para cubrir cheques del mes
+    const factDiariaNecesaria = diasRestantes > 0 ? totalChequesPendMes / diasRestantes : 0;
+    const promDiarioReal = curStats.brutas > 0 && dayLimit > 0 ? curStats.brutas / dayLimit : 0;
+    const cumpleRitmo = promDiarioReal >= factDiariaNecesaria;
+    
+    // Ahorro: caja actual vs deuda total de cheques
+    const faltanteAhorro = totalChequesTotal - cajaActual;
+    const ahorroOk = cajaActual >= totalChequesTotal;
+    const ahorroDiarioNecesario = diasRestantes > 0 && faltanteAhorro > 0 ? faltanteAhorro / diasRestantes : 0;
+    
+    // Cobertura del mes: caja vs cheques del mes
+    const coberturaMes = totalChequesPendMes > 0 ? (cajaActual / totalChequesPendMes * 100) : 100;
+    const coberturaMesColor = coberturaMes >= 100 ? '#637c6c' : coberturaMes >= 70 ? '#d4a373' : '#b56b6b';
+    
+    // Cobertura total: caja vs todos los cheques
+    const coberturaTotal = totalChequesTotal > 0 ? (cajaActual / totalChequesTotal * 100) : 100;
+    const coberturaTotalColor = coberturaTotal >= 100 ? '#637c6c' : coberturaTotal >= 50 ? '#d4a373' : '#b56b6b';
+    
+    // Ritmo facturación: badge visual
+    const ritmoHtml = `<div style="display:flex; flex-direction:column; gap:6px;">
+        <div style="font-weight:700; font-size:1.3rem; color:${cumpleRitmo ? '#637c6c' : '#b56b6b'};">${cumpleRitmo ? '✓ EN RITMO' : '✗ POR DEBAJO'}</div>
+        <div style="font-size:0.75rem; color:var(--text-muted);">Necesitás ${fmt(factDiariaNecesaria)}/día</div>
+        <div style="font-size:0.75rem; color:var(--text-muted);">Promedio actual: ${fmt(promDiarioReal)}/día</div>
+    </div>`;
+    
+    // Ahorro badge
+    const ahorroHtml = `<div style="display:flex; flex-direction:column; gap:6px;">
+        <div style="font-weight:700; font-size:1.3rem; color:${ahorroOk ? '#637c6c' : '#b56b6b'};">${ahorroOk ? '✓ CUBIERTO' : fmt(faltanteAhorro)}</div>
+        ${!ahorroOk ? `<div style="font-size:0.75rem; color:var(--text-muted);">Ahorrá ${fmt(ahorroDiarioNecesario)}/día para llegar</div>` : '<div style="font-size:0.75rem; color:var(--text-muted);">Tu caja cubre toda la deuda</div>'}
+        <div style="font-size:0.75rem; color:var(--text-muted);">Caja: ${fmt(cajaActual)} vs Deuda: ${fmt(totalChequesTotal)}</div>
+    </div>`;
+
+    drawGrid('rowCompromiso', [
+        { label: 'Cheques a Pagar (Este Mes)', val: totalChequesPendMes, prev: 0, t: 'cur', hideDelta:true,
+          info: { desc:'Total de cheques que vencen este mes y aún no están pagados.', calc:`Cheques pendientes del mes: ${chequesPendientesMes.length}<br>Total: ${fmt(totalChequesPendMes)}<br>Días restantes: ${diasRestantes}`} },
+        { label: 'Cheques Totales Pendientes', val: totalChequesTotal, prev: 0, t: 'cur', hideDelta:true,
+          info: { desc:'Suma de todos los cheques pendientes de todos los meses.', calc:`Cheques pendientes: ${todosLosChequesPend.length}<br>Total: ${fmt(totalChequesTotal)}`} },
+        { label: 'Ritmo de Facturación', val: ritmoHtml, prev: 0, t: 'raw', hideDelta:true,
+          info: { desc:'¿Tu facturación diaria alcanza para cubrir los cheques del mes?', calc:`Cheques del mes: ${fmt(totalChequesPendMes)}<br>Días restantes: ${diasRestantes}<br>Necesitás: ${fmt(factDiariaNecesaria)}/día<hr/>Facturado MTD: ${fmt(curStats.brutas)}<br>Días transcurridos: ${dayLimit}<br>Promedio real: ${fmt(promDiarioReal)}/día<hr/>${cumpleRitmo ? '✓ Vas bien, el ritmo actual cubre los cheques' : '✗ Necesitás facturar más para cubrir los cheques del mes'}`} },
+        { label: 'Cobertura de Caja (Mes)', val: coberturaMes, prev: 0, t: 'pct', hideDelta:true,
+          info: { desc:'Cuánto de los cheques del mes podés cubrir con tu caja actual.', calc:`Caja actual: ${fmt(cajaActual)}<br>Cheques del mes: ${fmt(totalChequesPendMes)}<hr/>Cobertura = ${fmt(coberturaMes,'dec')}%`} },
+        { label: 'Faltante para Deuda Total', val: ahorroHtml, prev: 0, t: 'raw', hideDelta:true,
+          info: { desc:'Cuánto te falta ahorrar para cubrir todos los cheques pendientes.', calc:`Caja actual: ${fmt(cajaActual)}<br>Deuda total cheques: ${fmt(totalChequesTotal)}<hr/>Diferencia: ${ahorroOk ? 'Cubierto, sobran ' + fmt(cajaActual - totalChequesTotal) : 'Faltan ' + fmt(faltanteAhorro)}<br>${!ahorroOk && diasRestantes > 0 ? 'Ahorro diario necesario: ' + fmt(ahorroDiarioNecesario) : ''}`} },
+        { label: 'Cobertura Total', val: coberturaTotal, prev: 0, t: 'pct', hideDelta:true,
+          info: { desc:'Tu caja actual vs toda la deuda de cheques.', calc:`Caja: ${fmt(cajaActual)}<br>Deuda total: ${fmt(totalChequesTotal)}<hr/>Cobertura = ${fmt(coberturaTotal,'dec')}%`} }
+    ], 'repeat(3, 1fr)');
 
     // ── 2.2 DSO estimado por Condición de Pedido ──
     const deudaMes = curStats.brutas - curStats.pCobradosVal;
