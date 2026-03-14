@@ -567,12 +567,17 @@ function coreLogic(d1, d2, m1) {
     const condColors = { 'CONTRA REEMBOLSO': '#d4a373', 'MOTO COBRA TRANSFERENCIA': '#637c6c', 'MOTO COBRA EFECTIVO': '#637c6c' };
     
     function buildDsoLines(entries) {
-        return entries.map(([cond, data]) => {
+        // Ordenar por días promedio de mayor a menor
+        const sorted = entries.map(([cond, data]) => {
             const avgDays = data.totalAmount > 0 ? Math.round(data.totalDays / data.totalAmount) : 0;
-            const color = condColors[cond] || 'var(--text-sec)';
+            return [cond, data, avgDays];
+        }).sort((a, b) => b[2] - a[2]);
+        
+        return sorted.map(([cond, data, avgDays], idx) => {
+            const color = idx === 0 ? '#d4a373' : 'var(--text-sec)'; // naranja para la más lenta
             return `<div style="display:flex; justify-content:space-between; align-items:center; padding:3px 0;">
-                <span style="font-size:0.75rem; color:${color}; font-weight:500;">${cond}</span>
-                <span style="font-weight:700; font-size:0.85rem;">${avgDays}d <span style="font-weight:400; color:var(--text-muted); font-size:0.72rem;">(${data.count} ped. · ${fmt(data.totalAmount)})</span></span>
+                <span style="font-size:0.75rem; color:${color}; font-weight:${idx === 0 ? '600' : '500'};">${cond}</span>
+                <span style="font-weight:700; font-size:0.85rem; ${idx === 0 ? 'color:#d4a373;' : ''}">${avgDays}d <span style="font-weight:400; color:var(--text-muted); font-size:0.72rem;">(${data.count} ped. · ${fmt(data.totalAmount)})</span></span>
             </div>`;
         }).join('');
     }
