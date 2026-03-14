@@ -230,9 +230,6 @@
         </div>
     </div>
 
-    <!-- Alertas inteligentes -->
-    <div id="alertsContainer" style="display:none; margin-bottom:16px;"></div>
-
     <div class="top-actions">
         <div class="date-picker">
             <label>MES VIGENTE</label>
@@ -323,10 +320,6 @@
     </div>
 
     <!-- Feed últimos pedidos -->
-    <div class="dashboard-section" data-section="feed">
-        <div class="section-header"><span class="drag-handle" style="display:none; cursor:grab; margin-right:8px; color:var(--text-muted);">⠿</span>Últimos Pedidos del Día</div>
-        <div id="feedContainer" class="metric-card" style="padding:16px;"></div>
-    </div>
 
     <!-- Gráficos -->
     <div class="dashboard-section" data-section="graficos">
@@ -624,7 +617,7 @@ function coreLogic(d1, d2, m1) {
     const postMesColor = cajaPostMes >= 0 ? '#637c6c' : '#b56b6b';
     const postMesHtml = `<div style="display:flex; flex-direction:column; gap:4px;">
         <div style="font-weight:700; font-size:1.5rem; color:${postMesColor};">${fmt(cajaPostMes)}</div>
-        <div style="font-size:0.78rem; color:var(--text-muted);">Deuda restante: ${fmt(deudaRestante)}</div>
+        <div style="font-size:0.78rem; color:#637c6c; font-weight:500;">Caja total: ${fmt(cajaAcumulada)}</div>
         <button onclick="openChequesAllModal()" style="margin-top:4px; padding:4px 10px; border-radius:4px; border:1px solid var(--border); background:var(--bg-body); color:var(--text-main); font-size:0.72rem; font-weight:500; cursor:pointer; width:fit-content;">Ver pr\u00f3ximos cheques</button>
     </div>`;
     
@@ -708,10 +701,12 @@ function coreLogic(d1, d2, m1) {
     // Pie chart: Cobrado vs Pendiente
     if (charts.pieCobro) charts.pieCobro.destroy();
     const noCobradoVal = curStats.brutas - curStats.pCobradosVal;
+    const pctCobrado = curStats.brutas > 0 ? (curStats.pCobradosVal / curStats.brutas * 100) : 0;
+    const pctPendiente = 100 - pctCobrado;
     charts.pieCobro = new Chart(document.getElementById('chartPieCobro'), {
         type: 'doughnut',
         data: {
-            labels: ['Cobrado', 'Pendiente'],
+            labels: [`Cobrado ${pctCobrado.toFixed(0)}%`, `Pendiente ${pctPendiente.toFixed(0)}%`],
             datasets: [{
                 data: [curStats.pCobradosVal, noCobradoVal > 0 ? noCobradoVal : 0],
                 backgroundColor: ['#637c6c', '#b56b6b'],
@@ -722,19 +717,39 @@ function coreLogic(d1, d2, m1) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            cutout: '65%',
+            cutout: '60%',
             plugins: {
-                legend: { display: true, position: 'bottom', labels: { usePointStyle: true, padding: 12, font: { size: 11 } } },
+                legend: { display: true, position: 'bottom', labels: { usePointStyle: true, padding: 14, font: { size: 12, weight: '600' } } },
                 tooltip: {
                     backgroundColor: '#18181b', titleColor: '#fff', padding: 10, cornerRadius: 4,
                     callbacks: {
                         label: function(ctx) {
                             const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
                             const pct = total > 0 ? (ctx.raw / total * 100).toFixed(1) : 0;
-                            return ctx.label + ': ' + fmt(ctx.raw) + ' (' + pct + '%)';
+                            return fmt(ctx.raw) + ' (' + pct + '%)';
                         }
                     }
                 }
+            }
+        },
+        plugins: [{
+            id: 'centerText',
+            afterDraw: function(chart) {
+                const ctx = chart.ctx;
+                const { width, height } = chart;
+                ctx.save();
+                ctx.font = '700 22px Inter, sans-serif';
+                ctx.fillStyle = '#111';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(pctCobrado.toFixed(0) + '%', width / 2, height / 2 - 8);
+                ctx.font = '500 11px Inter, sans-serif';
+                ctx.fillStyle = '#666';
+                ctx.fillText('cobrado', width / 2, height / 2 + 12);
+                ctx.restore();
+            }
+        }]
+    });
             }
         }
     });
@@ -1000,87 +1015,6 @@ function coreLogic(d1, d2, m1) {
     /* 2. RIESGO Y CHEQUES REDESIGN */
     // renderRiskWidget(d1, cajaActual); // Sección removida
 
-    // ── 3.1 ALERTAS INTELIGENTES ──
-    const alerts = [];
-    
-    // Alerta: ventas por debajo del mes anterior
-    if (dVentas < -10) {
-        alerts.push({ type: 'danger', text: `Facturación ${Math.abs(dVentas).toFixed(0)}% debajo del mes anterior al día ${dayLimit}` });
-    } else if (dVentas < -5) {
-        alerts.push({ type: 'warning', text: `Facturación ${Math.abs(dVentas).toFixed(0)}% debajo del mes anterior` });
-    }
-    
-    // Alerta: cheques esta semana
-    const chequesEstaSemana = (d1.chequesActivos || []).filter(c => {
-        if (!c.vencimiento || c.estado === 'PAGADO') return false;
-        const vDate = new Date(c.vencimiento + 'T12:00:00');
-        const diffD = Math.round((vDate - today) / (1000*60*60*24));
-        return diffD >= 0 && diffD <= 7;
-    });
-    if (chequesEstaSemana.length > 0) {
-        const totalSemana = chequesEstaSemana.reduce((a, c) => a + c.monto, 0);
-        const cubre = cajaActual >= totalSemana;
-        alerts.push({ 
-            type: cubre ? 'info' : 'danger', 
-            text: `${chequesEstaSemana.length} cheque${chequesEstaSemana.length > 1 ? 's' : ''} por ${fmt(totalSemana)} vence${chequesEstaSemana.length > 1 ? 'n' : ''} esta semana${cubre ? '' : ' — la caja no cubre'}` 
-        });
-    }
-    
-    // Alerta: tasa de cobro baja
-    if (tasaCobro < 30 && curStats.brutas > 0) {
-        alerts.push({ type: 'warning', text: `Tasa de cobro baja: solo ${tasaCobro.toFixed(0)}% cobrado de lo facturado` });
-    }
-    
-    // Alerta: margen neto negativo
-    if (margenNeto < 0) {
-        alerts.push({ type: 'danger', text: `Margen neto negativo: ${margenNeto.toFixed(1)}% — los gastos superan los ingresos` });
-    }
-    
-    // Alerta: ritmo de facturación bajo
-    if (!cumpleRitmo && totalChequesPendMes > 0) {
-        alerts.push({ type: 'warning', text: `Ritmo de facturación no alcanza para cubrir cheques del mes. Necesitás ${fmt(factDiariaNecesaria)}/día` });
-    }
-    
-    // Render alertas
-    const alertsEl = document.getElementById('alertsContainer');
-    if (alerts.length > 0) {
-        const alertColors = { danger: { bg: 'var(--danger-bg)', border: 'var(--danger)', icon: '⚠' }, warning: { bg: 'var(--warning-bg)', border: 'var(--warning)', icon: '⚡' }, info: { bg: 'var(--success-bg)', border: 'var(--success)', icon: 'ℹ' } };
-        alertsEl.innerHTML = alerts.map((a, i) => {
-            const c = alertColors[a.type] || alertColors.info;
-            return `<div id="alert_${i}" style="padding:10px 16px; background:${c.bg}; border-left:3px solid ${c.border}; border-radius:4px; margin-bottom:6px; font-size:0.85rem; color:var(--text-main); display:flex; align-items:center; gap:8px;">
-                <span>${c.icon}</span> <span style="flex:1;">${a.text}</span>
-                <span onclick="this.parentElement.remove(); if(!document.getElementById('alertsContainer').children.length) document.getElementById('alertsContainer').style.display='none';" style="cursor:pointer; color:var(--text-muted); font-size:1.1rem; padding:0 4px; line-height:1;">&times;</span>
-            </div>`;
-        }).join('');
-        alertsEl.style.display = 'block';
-    } else {
-        alertsEl.style.display = 'none';
-    }
-
-    // ── 3.2 FEED ÚLTIMOS PEDIDOS ──
-    const todayStr = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
-    const todayOrders = (d1.orders || [])
-        .filter(o => o.date && o.date.substring(0, 10) === todayStr)
-        .sort((a, b) => new Date(b.date) - new Date(a.date))
-        .slice(0, 8);
-    
-    const feedEl = document.getElementById('feedContainer');
-    if (todayOrders.length > 0) {
-        const statusColors = { 'COBRADO': 'var(--success)', 'EN TRANSITO': 'var(--warning)', 'PARA IMPRIMIR': 'var(--text-muted)', 'ANULADO': 'var(--danger)' };
-        feedEl.innerHTML = todayOrders.map(o => {
-            const time = o.date.includes('T') ? o.date.split('T')[1].substring(0, 5) : '';
-            const stColor = statusColors[o.status] || 'var(--text-sec)';
-            return `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border);">
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <span style="font-size:0.75rem; color:var(--text-muted); min-width:40px;">${time}</span>
-                    <span style="font-weight:600;">${fmt(o.amount)}</span>
-                </div>
-                <span style="font-size:0.75rem; font-weight:500; color:${stColor}; padding:2px 8px; border-radius:4px; background:${stColor}11;">${o.status}</span>
-            </div>`;
-        }).join('');
-    } else {
-        feedEl.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:16px; font-size:0.85rem;">Sin pedidos hoy todavía</div>';
-    }
 
 
     /* 3. CRECIMIENTO Y VENTAS MTD */
