@@ -251,36 +251,18 @@
 
     <div id="sectionsContainer">
     
-    <!-- PANORAMA PRINCIPAL -->
+    <!-- BLOQUE 1: PANORAMA PRINCIPAL -->
     <div class="dashboard-section" data-section="panorama">
-        <div class="section-header"><span class="drag-handle" style="display:none; cursor:grab; margin-right:8px; color:var(--text-muted);">⠿</span>Panorama Principal</div>
+        <div class="section-header"><span class="drag-handle" style="display:none; cursor:grab; margin-right:8px; color:var(--text-muted);">&#x2807;</span>Panorama Principal</div>
         <div class="metrics-grid" id="rowPanorama"></div>
-        
-        <!-- Facturación y Ritmo -->
         <div class="metrics-grid" id="rowCompromiso" style="margin-top:0;"></div>
-        
-        <!-- Flujo de Caja chart grande -->
         <div class="metric-card" style="padding:24px; margin-bottom:16px;">
             <div class="metric-title" style="margin-bottom:16px;">Flujo de Caja Proyectado</div>
             <div class="chart-container" style="height:280px;"><canvas id="chartFlujoCaja"></canvas></div>
         </div>
-        
-        <!-- Evolución del Negocio inline -->
-        <div class="metric-card" style="padding:24px; margin-bottom:16px;">
-            <div class="metric-title" style="margin-bottom:24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-                Evolución del Negocio
-                <select id="chartViewMode2" onchange="document.getElementById('chartViewMode').value=this.value; updateChartView();" style="padding:4px 8px; font-size:0.8rem; border-radius:4px; border:1px solid var(--border); background:var(--bg-body);">
-                    <option value="diario">Mensual (Diaria)</option>
-                    <option value="acumulado">Acumulado MTD</option>
-                    <option value="mensual">Histórico (Mes a Mes)</option>
-                </select>
-            </div>
-            <div class="chart-container" style="height:250px;"><canvas id="chartMainPanorama"></canvas></div>
-            <div id="dailyTicketAvgPanorama" style="margin-top:12px; padding:10px 14px; background:var(--bg-body); border-radius:8px; border:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; font-size:0.82rem; flex-wrap:wrap; gap:6px;"></div>
-        </div>
     </div>
 
-    <!-- Modal: Cheques del Mes -->
+    <!-- Modals de cheques -->
     <div class="modal-overlay" id="modalChequesMes" onclick="if(event.target===this)this.classList.remove('active')">
         <div class="modal" style="max-width:600px; padding:24px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
@@ -290,8 +272,6 @@
             <div id="modalChequesMesBody" style="max-height:60vh; overflow-y:auto;"></div>
         </div>
     </div>
-
-    <!-- Modal: Todos los Cheques Pendientes -->
     <div class="modal-overlay" id="modalChequesAll" onclick="if(event.target===this)this.classList.remove('active')">
         <div class="modal" style="max-width:600px; padding:24px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
@@ -302,65 +282,46 @@
         </div>
     </div>
 
-    <!-- Fila Global de Ventas -->
-    <div class="dashboard-section" data-section="global">
-        <div class="section-header"><span class="drag-handle" style="display:none; cursor:grab; margin-right:8px; color:var(--text-muted);">⠿</span>Panel Global de Ventas</div>
-        <div class="metrics-grid" id="rowGlobal"></div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:32px;">
+    <!-- BLOQUE 2: INGRESOS -->
+    <div class="dashboard-section" data-section="ingresos" style="background:var(--success-bg); border-radius:8px; padding:16px; margin-bottom:16px;">
+        <div class="section-header" style="color:var(--success);"><span class="drag-handle" style="display:none; cursor:grab; margin-right:8px; color:var(--text-muted);">&#x2807;</span>&#x2191; Ingresos</div>
+        <div class="metrics-grid" id="rowIngresos"></div>
+        <div style="display:grid; grid-template-columns:1fr 2fr; gap:16px; margin-bottom:16px;">
             <div class="metric-card" style="padding:20px;">
                 <div class="metric-title">Cobrado vs Pendiente</div>
                 <div style="height:200px; position:relative;"><canvas id="chartPieCobro"></canvas></div>
             </div>
-            <div class="metrics-grid" id="rowGlobal2" style="grid-template-columns:repeat(2,1fr); margin-bottom:0;"></div>
-        </div>
-    </div>
-
-    <!-- Compromiso del Mes -->
-
-    <!-- Primera Fila: Salud -->
-    <div class="dashboard-section" data-section="salud">
-        <div class="section-header" style="display:flex; align-items:center; flex-wrap:wrap; gap:12px;">
-            <span class="drag-handle" style="display:none; cursor:grab; margin-right:8px; color:var(--text-muted);">⠿</span>
-            Salud Financiera 
-            <button style="font-size:0.75rem; padding:6px 12px; display:inline-flex; align-items:center; gap:6px; background:var(--bg-card); color:var(--text-main); border:1px solid var(--border); border-radius:6px; box-shadow:0 1px 2px rgba(0,0,0,0.02); cursor:pointer; font-weight:500; font-family:inherit; transition: background 0.15s;" onmouseover="this.style.background='var(--bg-body)'" onmouseout="this.style.background='var(--bg-card)'" onclick="openModal()">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                Ingresar Datos
-            </button>
-            <span style="font-size:0.7rem; font-weight:normal; background:var(--bg-body); padding:4px 8px; border-radius:4px; border:1px solid var(--border); margin-left:auto;" id="lblMtdInfo"></span>
-        </div>
-        <div class="metrics-grid" id="rowHealth"></div>
-    </div>
-
-    <!-- Segunda Fila: Riesgo -->
-    <!-- Tercera Fila: Crecimiento -->
-    <div class="dashboard-section" data-section="crecimiento">
-        <div class="section-header"><span class="drag-handle" style="display:none; cursor:grab; margin-right:8px; color:var(--text-muted);">⠿</span>Motor de Crecimiento</div>
-        <div class="metrics-grid" id="rowGrowth"></div>
-    </div>
-
-    <!-- Feed últimos pedidos -->
-
-    <!-- Gráficos -->
-    <div class="dashboard-section" data-section="graficos">
-    <div class="charts-row">
-        <div class="metric-card" style="padding:24px;">
-            <div class="metric-title" style="margin-bottom:24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-                Evolución del Negocio
-                <select id="chartViewMode" onchange="updateChartView()" style="padding:4px 8px; font-size:0.8rem; border-radius:4px; border:1px solid var(--border); background:var(--bg-body);">
-                    <option value="diario">Mensual (Diaria)</option>
-                    <option value="acumulado">Acumulado MTD</option>
-                    <option value="mensual">Histórico (Mes a Mes)</option>
-                </select>
+            <div class="metric-card" style="padding:24px;">
+                <div class="metric-title" style="margin-bottom:24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                    Evoluci&oacute;n del Negocio
+                    <select id="chartViewMode" onchange="updateChartView()" style="padding:4px 8px; font-size:0.8rem; border-radius:4px; border:1px solid var(--border); background:var(--bg-body);">
+                        <option value="diario">Mensual (Diaria)</option>
+                        <option value="acumulado">Acumulado MTD</option>
+                        <option value="mensual">Hist&oacute;rico (Mes a Mes)</option>
+                    </select>
+                </div>
+                <div class="chart-container" style="height:200px;"><canvas id="chartMain"></canvas></div>
+                <div id="dailyTicketAvg" style="margin-top:12px; padding:8px 12px; background:var(--bg-body); border-radius:6px; border:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; flex-wrap:wrap; gap:6px;"></div>
             </div>
-            <div class="chart-container" style="height:280px;"><canvas id="chartMain"></canvas></div>
-            <div id="dailyTicketAvg" style="margin-top:16px; padding:12px 16px; background:var(--bg-body); border-radius:8px; border:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; flex-wrap:wrap; gap:8px;"></div>
         </div>
-        <div class="metric-card" style="padding:24px;">
-            <div class="metric-title" style="margin-bottom:24px;">Mapa Caliente de Pedidos (Hora del Día)</div>
-            <div class="chart-container" style="height:280px;"><canvas id="chartHours"></canvas></div>
+    </div>
+
+    <!-- BLOQUE 3: GASTOS -->
+    <div class="dashboard-section" data-section="gastos" style="background:var(--danger-bg); border-radius:8px; padding:16px; margin-bottom:16px;">
+        <div class="section-header" style="color:var(--danger);"><span class="drag-handle" style="display:none; cursor:grab; margin-right:8px; color:var(--text-muted);">&#x2807;</span>&#x2193; Gastos y Deuda</div>
+        <div class="metrics-grid" id="rowGastos"></div>
+        <div class="metrics-grid" id="rowDeuda" style="margin-top:0;"></div>
+    </div>
+
+    <!-- BLOQUE 4: TENDENCIA -->
+    <div class="dashboard-section" data-section="tendencia">
+        <div class="section-header"><span class="drag-handle" style="display:none; cursor:grab; margin-right:8px; color:var(--text-muted);">&#x2807;</span>Tendencia</div>
+        <div class="metric-card" style="padding:24px; margin-bottom:16px;">
+            <div class="metric-title" style="margin-bottom:24px;">Mapa Caliente de Pedidos (Hora del D&iacute;a)</div>
+            <div class="chart-container" style="height:250px;"><canvas id="chartHours"></canvas></div>
         </div>
-        </div>
-    </div><!-- close graficos section -->
+        <span id="lblMtdInfo" style="display:none;"></span>
+    </div>
 
     </div><!-- close sectionsContainer -->
 
@@ -704,7 +665,7 @@ function coreLogic(d1, d2, m1) {
         <div style="font-size:0.78rem;"><span style="color:${adsColor}; font-weight:600;">${pctAds.toFixed(1)}%</span> <span style="color:var(--text-muted);">de ventas (óptimo: &lt;10%)</span></div>
     </div>`;
     
-    drawGrid('rowGlobal', [
+    drawGrid('rowIngresos', [
         { label: 'Ventas de Este Mes', val: curStats.brutas, prev: prevStats.brutas, t: 'cur',
           info: { desc:'Facturación MTD ignorando anulados.', calc:`Las ventas brutas acumuladas sumando todos los reportes del mes.`} },
         { label: 'Cobradas Este Mes', val: curStats.pCobradosVal, prev: 0, t: 'cur', hideDelta:true,
@@ -769,7 +730,7 @@ function coreLogic(d1, d2, m1) {
     });
     
     // Second grid: Anulados, Flete, Publicidad, Cantidad ventas
-    drawGrid('rowGlobal2', [
+    drawGrid('rowGastos', [
         { label: 'Ventas Anuladas', val: anuladosHtml, prev: 0, t: 'raw', hideDelta: true,
           info: { desc:'Monto y cantidad de pedidos anulados este mes.', calc:`Monto anulado: ${fmt(curStats.anuladosVal || 0)}<br>Cantidad: ${curStats.anulados}<br>${prevAnuladosVal > 0 ? 'Mes anterior: ' + fmt(prevAnuladosVal) + ' (' + (prevStats.anulados||0) + ' ped.)' : ''}<hr/>${deltaAnulados > 0 ? '<span style="color:var(--danger)">↑ Subieron ' + deltaAnulados.toFixed(0) + '% vs mes anterior</span>' : deltaAnulados < 0 ? '<span style="color:var(--success)">↓ Bajaron ' + Math.abs(deltaAnulados).toFixed(0) + '% vs mes anterior</span>' : ''}`} },
         { label: 'Costo Flete Total', val: fleteHtml, prev: 0, t: 'raw', hideDelta: true,
@@ -1098,7 +1059,7 @@ function coreLogic(d1, d2, m1) {
         agingBarHtml = `<div style="font-weight:700; color:var(--success);">Sin deuda pendiente</div>`;
     }
 
-    drawGrid('rowHealth', [
+    drawGrid('rowDeuda', [
         { label: 'Caja Total (Acumulada a la fecha)', val: cajaAcumulada, prev: 0, t: 'cur', hideDelta:true,
           info: { desc:'Suma de la caja con el mes anterior.', calc:`Caja Actual: ${fmt(cajaActual)}<br>Caja Anterior: ${fmt(prevCajaActual)}<hr/>Acumulado = ${fmt(cajaAcumulada)}` } },
         { label: 'Caja Actual (Mes en curso)', val: cajaActual, prev: 0, t: 'cur', hideDelta:true,
@@ -1120,20 +1081,9 @@ function coreLogic(d1, d2, m1) {
 
     /* 3. CRECIMIENTO Y VENTAS MTD */
 
-    drawGrid('rowGrowth', [
-        { label: 'Ventas del Mes (Brutas)', val: curStats.brutas, prev: prevStats.brutas, t: 'cur',
-          info: { desc:'Facturación MTD ignorando anulados.', calc:`Hasta fecha ${dayLimit}:<br>Mes evaluado: ${fmt(curStats.brutas)}<br>Mes comparación: ${fmt(prevStats.brutas)}`} },
-        { label: 'Pedidos Nuevos (Unid.)', val: curStats.validOrders, prev: prevStats.validOrders, t: 'num',
-          info: { desc:'Unidades operadas válidas', calc:`Total MTD: ${fmt(curStats.validOrders,'num')} pedidos.`} },
-        { label: 'Ticket Promedio', val: tktPromedio, prev: prevTktPromedio, t: 'cur',
-          info: { desc:'Facturación / Cantidad válida', calc:`Facturacion: ${fmt(curStats.brutas)} / Pedidos: ${fmt(curStats.validOrders,'num')}<hr/>Ticket = ${fmt(tktPromedio)}`} },
-        { label: 'Pedidos Anulados', val: curStats.anulados, prev: prevStats.anulados, t: 'num', inv: true,
-          info: { desc:'Volumen de cancelaciones.', calc:`Mismos anulados a esta misma fecha limitados a MTD.`} }
-    ]);
-
     /* 4. GRAFICOS */
     const ttip = { backgroundColor:'#18181b', titleColor:'#fff', padding:10, cornerRadius:4, bodyFont:{family:'Inter'} };
-    Object.entries(charts).forEach(([k,c]) => { if(k !== 'pieCobro' && k !== 'mainPanorama' && k !== 'flujoCaja') c.destroy(); });
+    Object.entries(charts).forEach(([k,c]) => { if(k !== 'pieCobro' && k !== 'flujoCaja') c.destroy(); });
     
     // Reservamos data en window para re-dibujar
     // Generar todos los días del 1 hasta hoy (o fin de mes si es mes pasado)
@@ -1491,12 +1441,8 @@ function toggleDsoView() {
 
 function updateChartView() {
     if(charts.main) charts.main.destroy();
-    if(charts.mainPanorama) charts.mainPanorama.destroy();
     
     const mode = document.getElementById('chartViewMode').value;
-    // Sync selectors
-    const sel2 = document.getElementById('chartViewMode2');
-    if(sel2 && sel2.value !== mode) sel2.value = mode;
     
     const cData = window._chartData;
     const ttip = { backgroundColor:'#18181b', titleColor:'#fff', padding:10, cornerRadius:4, bodyFont:{family:'Inter'} };
@@ -1763,21 +1709,6 @@ function updateChartView() {
         });
     }
     
-    // Mirror chart to Panorama section
-    const pCanvas = document.getElementById('chartMainPanorama');
-    if (pCanvas && charts.main) {
-        const cfg = charts.main.config;
-        charts.mainPanorama = new Chart(pCanvas, {
-            type: cfg.type,
-            data: JSON.parse(JSON.stringify(cfg.data)),
-            options: JSON.parse(JSON.stringify(cfg.options)),
-            plugins: cfg.plugins || []
-        });
-    }
-    // Mirror ticket avg
-    const srcAvg = document.getElementById('dailyTicketAvg');
-    const dstAvg = document.getElementById('dailyTicketAvgPanorama');
-    if (srcAvg && dstAvg) dstAvg.innerHTML = srcAvg.innerHTML;
 }
 
 function openAllChequesModal() {
