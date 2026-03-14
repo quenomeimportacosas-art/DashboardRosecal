@@ -542,8 +542,9 @@ function coreLogic(d1, d2, m1) {
         dsoByCondMes[cond].count++;
     });
     
-    // DSO por condición — HISTÓRICO (todos los meses)
-    const allPending = (d1.pendingAll || d1.orders || []).filter(o => o.status !== 'COBRADO' && o.status !== 'ANULADO');
+    // DSO por condición — HISTÓRICO (desde febrero 2026 en adelante)
+    const histCutoff = new Date(2026, 1, 1); // 1 de febrero 2026
+    const allPending = (d1.pendingAll || d1.orders || []).filter(o => o.status !== 'COBRADO' && o.status !== 'ANULADO' && new Date(o.date) >= histCutoff);
     const dsoByCondHist = {};
     allPending.forEach(o => {
         const cond = o.condicion || 'SIN DATO';
@@ -598,7 +599,7 @@ function coreLogic(d1, d2, m1) {
     // Clasificar TODOS los pedidos pendientes (de cualquier mes) por antigüedad
     const agingBuckets = { '0-15 días': 0, '16-30 días': 0, '31-60 días': 0, '60-90 días': 0, '90+ días': 0 };
     const agingColors = { '0-15 días': '#637c6c', '16-30 días': '#d4a373', '31-60 días': '#b56b6b', '60-90 días': '#991b1b', '90+ días': '#7f1d1d' };
-    const pendingOrders = (d1.pendingAll || d1.orders || []).filter(o => o.status !== 'COBRADO' && o.status !== 'ANULADO');
+    const pendingOrders = (d1.pendingAll || d1.orders || []).filter(o => o.status !== 'COBRADO' && o.status !== 'ANULADO' && new Date(o.date) >= histCutoff);
     
     pendingOrders.forEach(o => {
         const orderDate = new Date(o.date);
