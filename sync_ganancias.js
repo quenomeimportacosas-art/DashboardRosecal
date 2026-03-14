@@ -56,12 +56,16 @@ function syncImportesACalculoGanancias() {
   const idxStatusResp = respHeaders.indexOf(CALC_HEADER_STATUS);
   const idxCostoEnvioResp = respHeaders.map(norm).findIndex(h => h === norm(CALC_HEADER_COSTO_ENVIO));
   const idxCostoBeatoResp = respHeaders.map(norm).findIndex(h => h === norm(CALC_HEADER_COSTO_BEATO));
-  const idxTelefonoResp = respHeaders.map(norm).findIndex(h => h === norm('Número de teléfono') || h === norm('Numero de telefono') || h === 'telefono' || h === 'teléfono');
+  const idxTelefonoResp = respHeaders.map(norm).findIndex(h => h.indexOf('numero de telefono') >= 0 || h.indexOf('telefono') >= 0);
   
   if (idxTsResp === -1) throw new Error(`No encuentro la columna "${CALC_HEADER_TS}" en ${RESPONSES_SHEET}`);
   if (idxImpResp === -1) throw new Error(`No encuentro la columna "Importe" en ${RESPONSES_SHEET}`);
   if (idxStatusResp === -1) throw new Error(`No encuentro la columna "${CALC_HEADER_STATUS}" en ${RESPONSES_SHEET}`);
   
+  Logger.log('Columna Teléfono encontrada en Respuestas: ' + (idxTelefonoResp >= 0 ? 'Sí (col ' + (idxTelefonoResp+1) + ')' : 'NO'));
+  if (idxTelefonoResp === -1) {
+    Logger.log('Headers disponibles (normalizados): ' + respHeaders.map(norm).join(' | '));
+  }  
   // --- FORZAR las columnas en Calculo Ganancias
   ensureHeadersFixedCalc_(shCalc, CALC_REQUIRED_HEADERS);
   const numDataCols = CALC_REQUIRED_HEADERS.length;
@@ -152,6 +156,20 @@ function syncImportesACalculoGanancias() {
     const insertRow = calcLastRowInA + 1;
     shCalc.getRange(insertRow, 1, appends.length, numDataCols).setValues(appends);
   }
+  
+  // --- Resumen
+  var telCount = 0;
+  if (idxTelefonoResp >= 0) {
+    updates.forEach(function(u) { if (u.telefono) telCount++; });
+    appends.forEach(function(a) { if (a[6]) telCount++; });
+  }
+  SpreadsheetApp.getUi().alert(
+    '✅ Sync completado\n\n' +
+    'Actualizados: ' + updates.length + '\n' +
+    'Nuevos: ' + appends.length + '\n' +
+    'Con teléfono: ' + telCount + '\n' +
+    'Columna teléfono en Respuestas: ' + (idxTelefonoResp >= 0 ? 'Encontrada (col ' + (idxTelefonoResp+1) + ')' : 'NO encontrada')
+  );
 }
 /***********************
  * HELPERS (nombres únicos para evitar conflictos)
