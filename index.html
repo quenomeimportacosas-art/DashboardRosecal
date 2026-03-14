@@ -670,11 +670,13 @@ function coreLogic(d1, d2, m1) {
           info: { desc:'Facturación MTD ignorando anulados.', calc:`Las ventas brutas acumuladas sumando todos los reportes del mes.`} },
         { label: 'Cobradas Este Mes', val: curStats.pCobradosVal, prev: 0, t: 'cur', hideDelta:true,
           info: { desc:'Dinero efectivamente cobrado este mes.', calc:`Total con status COBRADO sobre los pedidos de este mes.`} },
+        { label: 'Caja Actual', val: cajaActual, prev: 0, t: 'cur', hideDelta:true,
+          info: { desc:'Dinero disponible este mes.', calc:`Banco: ${fmt(m.bancoCuenta||0)}<br>MP: ${fmt(m.saldoMP||0)}<br>Efectivo: ${fmt(m.efectivoCaja||0)}<br>Inversiones: ${fmt(m.inversiones||0)}<hr/>Total: ${fmt(cajaActual)}`} },
         { label: 'Ticket Promedio', val: tktPromedio, prev: prevTktPromedio, t: 'cur',
           info: { desc:'Facturación / cantidad de pedidos válidos.', calc:`Ventas: ${fmt(curStats.brutas)}<br>Pedidos: ${curStats.validOrders}<hr/>Ticket = ${fmt(tktPromedio)}`} },
-        { label: 'Facturación Histórica', val: glob.totalBruto, prev: 0, t: 'cur', hideDelta:true,
-          info: { desc:'Ventas totales netas desde la creación.', calc:`Suma global historica de todos los meses ignorando cancelados.`} }
-    ]);
+        { label: 'Pedidos Válidos', val: curStats.validOrders, prev: prevStats.validOrders, t: 'num',
+          info: { desc:'Cantidad total de pedidos no anulados este mes.', calc:`Válidos: ${curStats.validOrders}<br>Anulados: ${curStats.anulados}<br>Total: ${curStats.validOrders + curStats.anulados}`} }
+    ], 'repeat(5, 1fr)');
     
     // Pie chart: Cobrado vs Pendiente
     if (charts.pieCobro) charts.pieCobro.destroy();
@@ -1060,19 +1062,13 @@ function coreLogic(d1, d2, m1) {
     }
 
     drawGrid('rowDeuda', [
-        { label: 'Caja Total (Acumulada a la fecha)', val: cajaAcumulada, prev: 0, t: 'cur', hideDelta:true,
-          info: { desc:'Suma de la caja con el mes anterior.', calc:`Caja Actual: ${fmt(cajaActual)}<br>Caja Anterior: ${fmt(prevCajaActual)}<hr/>Acumulado = ${fmt(cajaAcumulada)}` } },
-        { label: 'Caja Actual (Mes en curso)', val: cajaActual, prev: 0, t: 'cur', hideDelta:true,
-          info: { desc:'Dinero en tiempo real ingresado en Datos Manuales.', calc:`Banco: ${fmt(m.bancoCuenta||0)}<br>MP: ${fmt(m.saldoMP||0)}<br>Efectivo: ${fmt(m.efectivoCaja||0)}<br>Inversiones: ${fmt(m.inversiones||0)}<hr/>Total: ${fmt(cajaActual)}`} },
         { label: 'DSO (Días de Cobro)', val: dsoBreakdownHtml, prev: 0, t: 'raw', hideDelta:true,
           info: { desc:'Días promedio de cobro por condición. Toggle entre mes actual e histórico.', calc:`DSO General del mes: ${dsoEstimado} días<br>Deuda del mes: ${fmt(deudaMes)}<br>Facturado: ${fmt(curStats.brutas)}<hr/>Pedidos pendientes mes: ${currentMonthPending.length}<br>Pedidos pendientes histórico: ${allPending.length}`} },
-        { label: 'Inversión sobre Facturado', val: invVsVentas, prev: 0, t: 'pct', hideDelta:true,
-          info: { desc:'Mide cuán eficiente es tu gasto en pauta. Recomendado <= 10%.', calc:`Inversión en Publicidad: ${fmt(impAds)}<br>Total Facturado (Bruto): ${fmt(curStats.brutas)}<hr/>Proporción = ${fmt(invVsVentas,'dec')}%` } },
         { label: 'Margen Neto', val: margenNeto, prev: 0, t: 'pct', hideDelta:true,
           info: { desc:'Rentabilidad real: Ventas menos todos los costos del mes.', calc:`Ventas Brutas: ${fmt(curStats.brutas)}<br>- Cheques del Mes (mercadería): ${fmt(costoChequesDelMes)}<br>- Logística: ${fmt(costoLogistica)}<br>- Publicidad: ${fmt(impAds)}<br>- Marketing: ${fmt(gMkt)}<br>- Gastos Operativos: ${fmt(ops)}<hr/>Ganancia Neta = ${fmt(gananciaNeta)}<br>Margen Neto = ${fmt(margenNeto,'dec')}%` } },
         { label: 'Deuda por Antigüedad', val: agingBarHtml, prev: 0, t: 'raw', hideDelta:true,
           info: { desc:'Deuda total pendiente de TODOS los meses, clasificada por antigüedad. La deuda vieja (60+ días) es la más riesgosa.', calc:`0-15 días: ${fmt(agingBuckets['0-15 días'])}<br>16-30 días: ${fmt(agingBuckets['16-30 días'])}<br>31-60 días: ${fmt(agingBuckets['31-60 días'])}<br>60-90 días: ${fmt(agingBuckets['60-90 días'])}<br>90+ días: ${fmt(agingBuckets['90+ días'])}<hr/>Total pendiente: ${fmt(totalPending)}<br>Pedidos: ${pendingOrders.length}`} }
-    ], 'repeat(3, 1fr)');
+    ]);
 
     /* 2. RIESGO Y CHEQUES REDESIGN */
     // renderRiskWidget(d1, cajaActual); // Sección removida
