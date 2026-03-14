@@ -202,9 +202,10 @@ var gasBackend = {
         if (ci.telefono < 0) ci.telefono = this.findCol(h, 'telefono', 'teléfono');
         if (ci.telefono < 0 || ci.condicion < 0) return {};
         
+        var normTel = function(t) { return String(t || '').replace(/[\s\-\+\.]/g, '').replace(/^549/, '').replace(/^54/, ''); };
         var mapa = {};
         for (var i = 1; i < data.length; i++) {
-            var tel = String(data[i][ci.telefono] || '').trim();
+            var tel = normTel(data[i][ci.telefono]);
             var cond = String(data[i][ci.condicion] || '').trim().toUpperCase();
             if (tel && cond) mapa[tel] = cond;
         }
@@ -258,7 +259,8 @@ var gasBackend = {
             var st = String(r[ci.status] || '').trim().toUpperCase();
             
             // Buscar condición por teléfono
-            var tel = ci.telefono >= 0 ? String(r[ci.telefono] || '').trim() : '';
+            var normTel2 = function(t) { return String(t || '').replace(/[\s\-\+\.]/g, '').replace(/^549/, '').replace(/^54/, ''); };
+            var tel = ci.telefono >= 0 ? normTel2(r[ci.telefono]) : '';
             var condicion = (condicionesMap && tel && condicionesMap[tel]) ? condicionesMap[tel] : '';
             
             if (st !== 'ANULADO') {
