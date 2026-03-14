@@ -257,6 +257,13 @@
     <div class="dashboard-section" data-section="global">
         <div class="section-header"><span class="drag-handle" style="display:none; cursor:grab; margin-right:8px; color:var(--text-muted);">⠿</span>Panel Global de Ventas</div>
         <div class="metrics-grid" id="rowGlobal"></div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:32px;">
+            <div class="metric-card" style="padding:20px;">
+                <div class="metric-title">Cobrado vs Pendiente</div>
+                <div style="height:200px; position:relative;"><canvas id="chartPieCobro"></canvas></div>
+            </div>
+            <div class="metrics-grid" id="rowGlobal2" style="grid-template-columns:repeat(2,1fr); margin-bottom:0;"></div>
+        </div>
     </div>
 
     <!-- Compromiso del Mes -->
@@ -484,9 +491,10 @@ function coreLogic(d1, d2, m1) {
 
     function buildTxStats(ordersList, limit) {
         let validOrders = 0, brutas = 0, pCobrados = 0, pNoCobrados = 0, anulados = 0;
-        let pCobradosVal = 0;
+        let pCobradosVal = 0, anuladosVal = 0;
         let hourly = new Array(24).fill(0);
         let daily = {};
+        let byCondicion = {}; // count and amount per condicion
         
         const list = ordersList || [];
         for(let o of list) {
@@ -495,6 +503,7 @@ function coreLogic(d1, d2, m1) {
             if(day <= limit) {
                 if(o.status === 'ANULADO') {
                     anulados++;
+                    anuladosVal += o.amount;
                 } else {
                     validOrders++;
                     brutas += o.amount;
@@ -504,10 +513,16 @@ function coreLogic(d1, d2, m1) {
                     let dateKey = od.getFullYear() + '-' + String(od.getMonth()+1).padStart(2,'0') + '-' + String(od.getDate()).padStart(2,'0');
                     daily[dateKey] = (daily[dateKey]||0) + o.amount;
                     hourly[od.getHours()]++;
+                    
+                    // Track by condicion
+                    const cond = o.condicion || 'SIN DATO';
+                    if (!byCondicion[cond]) byCondicion[cond] = { count: 0, amount: 0 };
+                    byCondicion[cond].count++;
+                    byCondicion[cond].amount += o.amount;
                 }
             }
         }
-        return { validOrders, brutas, pCobrados, pNoCobrados, anulados, pCobradosVal, daily, hourly };
+        return { validOrders, brutas, pCobrados, pNoCobrados, anulados, anuladosVal, pCobradosVal, daily, hourly, byCondicion };
     }
 
     const m = d1.manual || {};
@@ -563,15 +578,94 @@ function coreLogic(d1, d2, m1) {
     const tasaCobro = curStats.brutas > 0 ? (curStats.pCobradosVal / curStats.brutas * 100) : 0;
     const prevTasaCobro = prevStats.brutas > 0 ? ((prevStats.pCobradosVal||0) / prevStats.brutas * 100) : 0;
     
+    // Anulados
+    const prevAnuladosVal = prevStats.anuladosVal || 0;
+    const deltaAnulados = prevAnuladosVal > 0 ? ((curStats.anuladosVal - prevAnuladosVal) / prevAnuladosVal * 100) : 0;
+    const anuladosHtml = `<div style="display:flex; flex-direction:column; gap:4px;">
+        <div style="font-weight:700; font-size:1.5rem;">${fmt(curStats.anuladosVal || 0)}</div>
+        <div style="font-size:0.78rem; color:var(--text-muted);">${curStats.anulados} pedido${curStats.anulados !== 1 ? 's' : ''}</div>
+    </div>`;
+    
+    // Ticket promedio
+    const tktPromedio = curStats.validOrders > 0 ? curStats.brutas / curStats.validOrders : 0;
+    const prevTktPromedio = prevStats.validOrders > 0 ? prevStats.brutas / prevStats.validOrders : 0;
+    
+    // Costo flete por condición
+    const motoCondiciones = Object.entries(curStats.byCondicion || {}).filter(([c]) => c.indexOf('MOTO') >= 0);
+    const crCondiciones = Object.entries(curStats.byCondicion || {}).filter(([c]) => c.indexOf('CONTRA') >= 0 || c.indexOf('REEMBOLSO') >= 0);
+    const totalMoto = motoCondiciones.reduce((a, [, d]) => a + d.count, 0);
+    const totalCR = crCondiciones.reduce((a, [, d]) => a + d.count, 0);
+    const totalConCond = curStats.validOrders;
+    const pctMoto = totalConCond > 0 ? (totalMoto / totalConCond * 100) : 0;
+    const pctCR = totalConCond > 0 ? (totalCR / totalConCond * 100) : 0;
+    const fleteHtml = `<div style="display:flex; flex-direction:column; gap:4px;">
+        <div style="font-weight:700; font-size:1.5rem;">${fmt(costoLogistica)}</div>
+        <div style="font-size:0.78rem; color:var(--text-muted);">Moto: ${pctMoto.toFixed(0)}% · C.Reembolso: ${pctCR.toFixed(0)}%</div>
+    </div>`;
+    
+    // Publicidad
+    const pctAds = curStats.brutas > 0 ? (impAds / curStats.brutas * 100) : 0;
+    const adsColor = pctAds <= 10 ? '#637c6c' : pctAds <= 15 ? '#d4a373' : '#b56b6b';
+    const adsHtml = `<div style="display:flex; flex-direction:column; gap:4px;">
+        <div style="font-weight:700; font-size:1.5rem;">${fmt(impAds)}</div>
+        <div style="font-size:0.78rem;"><span style="color:${adsColor}; font-weight:600;">${pctAds.toFixed(1)}%</span> <span style="color:var(--text-muted);">de ventas (óptimo: &lt;10%)</span></div>
+    </div>`;
+    
     drawGrid('rowGlobal', [
         { label: 'Ventas de Este Mes', val: curStats.brutas, prev: prevStats.brutas, t: 'cur',
           info: { desc:'Facturación MTD ignorando anulados.', calc:`Las ventas brutas acumuladas sumando todos los reportes del mes.`} },
         { label: 'Cobradas Este Mes', val: curStats.pCobradosVal, prev: 0, t: 'cur', hideDelta:true,
           info: { desc:'Dinero efectivamente cobrado este mes.', calc:`Total con status COBRADO sobre los pedidos de este mes.`} },
-        { label: 'Tasa de Cobro', val: tasaCobro, prev: prevTasaCobro, t: 'pct',
-          info: { desc:'Porcentaje de lo facturado que ya fue cobrado. Ideal: >70%.', calc:`Cobrado: ${fmt(curStats.pCobradosVal)}<br>Facturado: ${fmt(curStats.brutas)}<hr/>Tasa = ${fmt(tasaCobro,'dec')}%${prevTasaCobro > 0 ? '<br>Mes anterior: ' + fmt(prevTasaCobro,'dec') + '%' : ''}`} },
+        { label: 'Ticket Promedio', val: tktPromedio, prev: prevTktPromedio, t: 'cur',
+          info: { desc:'Facturación / cantidad de pedidos válidos.', calc:`Ventas: ${fmt(curStats.brutas)}<br>Pedidos: ${curStats.validOrders}<hr/>Ticket = ${fmt(tktPromedio)}`} },
         { label: 'Facturación Histórica', val: glob.totalBruto, prev: 0, t: 'cur', hideDelta:true,
-          info: { desc:'Ventas totales netas desde la creación.', calc:`Suma global historica de todos los meses de la empresa ignorando cancelados.`} }
+          info: { desc:'Ventas totales netas desde la creación.', calc:`Suma global historica de todos los meses ignorando cancelados.`} }
+    ]);
+    
+    // Pie chart: Cobrado vs Pendiente
+    if (charts.pieCobro) charts.pieCobro.destroy();
+    const noCobradoVal = curStats.brutas - curStats.pCobradosVal;
+    charts.pieCobro = new Chart(document.getElementById('chartPieCobro'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Cobrado', 'Pendiente'],
+            datasets: [{
+                data: [curStats.pCobradosVal, noCobradoVal > 0 ? noCobradoVal : 0],
+                backgroundColor: ['#637c6c', '#b56b6b'],
+                borderWidth: 0,
+                hoverOffset: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '65%',
+            plugins: {
+                legend: { display: true, position: 'bottom', labels: { usePointStyle: true, padding: 12, font: { size: 11 } } },
+                tooltip: {
+                    backgroundColor: '#18181b', titleColor: '#fff', padding: 10, cornerRadius: 4,
+                    callbacks: {
+                        label: function(ctx) {
+                            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                            const pct = total > 0 ? (ctx.raw / total * 100).toFixed(1) : 0;
+                            return ctx.label + ': ' + fmt(ctx.raw) + ' (' + pct + '%)';
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    // Second grid: Anulados, Flete, Publicidad, Cantidad ventas
+    drawGrid('rowGlobal2', [
+        { label: 'Ventas Anuladas', val: anuladosHtml, prev: 0, t: 'raw', hideDelta: true,
+          info: { desc:'Monto y cantidad de pedidos anulados este mes.', calc:`Monto anulado: ${fmt(curStats.anuladosVal || 0)}<br>Cantidad: ${curStats.anulados}<br>${prevAnuladosVal > 0 ? 'Mes anterior: ' + fmt(prevAnuladosVal) + ' (' + (prevStats.anulados||0) + ' ped.)' : ''}<hr/>${deltaAnulados > 0 ? '<span style="color:var(--danger)">↑ Subieron ' + deltaAnulados.toFixed(0) + '% vs mes anterior</span>' : deltaAnulados < 0 ? '<span style="color:var(--success)">↓ Bajaron ' + Math.abs(deltaAnulados).toFixed(0) + '% vs mes anterior</span>' : ''}`} },
+        { label: 'Costo Flete Total', val: fleteHtml, prev: 0, t: 'raw', hideDelta: true,
+          info: { desc:'Costo logístico total del mes con desglose por tipo de envío.', calc:`Moto: ${totalMoto} pedidos (${pctMoto.toFixed(1)}%)<br>Contra Reembolso: ${totalCR} pedidos (${pctCR.toFixed(1)}%)<br>Otros: ${totalConCond - totalMoto - totalCR} pedidos`} },
+        { label: 'Gasto Publicidad', val: adsHtml, prev: 0, t: 'raw', hideDelta: true,
+          info: { desc:'Inversión en publicidad. Lo óptimo es menos del 10% de la facturación.', calc:`Inversión: ${fmt(impAds)}<br>Facturación: ${fmt(curStats.brutas)}<hr/>Porcentaje: ${pctAds.toFixed(1)}%<br>${pctAds <= 10 ? '✓ Dentro del rango óptimo' : '✗ Por encima del 10% recomendado'}`} },
+        { label: 'Pedidos Válidos', val: curStats.validOrders, prev: prevStats.validOrders, t: 'num',
+          info: { desc:'Cantidad total de pedidos no anulados este mes.', calc:`Válidos: ${curStats.validOrders}<br>Anulados: ${curStats.anulados}<br>Total: ${curStats.validOrders + curStats.anulados}`} }
     ]);
 
     // ── COMPROMISO DEL MES ──
@@ -908,39 +1002,20 @@ function coreLogic(d1, d2, m1) {
 
     /* 3. CRECIMIENTO Y VENTAS MTD */
 
-    const tktPromo = curStats.validOrders > 0 ? (curStats.brutas / curStats.validOrders) : 0;
-    const ptktPromo = prevStats.validOrders > 0 ? (prevStats.brutas / prevStats.validOrders) : 0;
-    
-    let pctCobrado = 0, pctNo = 0;
-    if(curStats.validOrders > 0) {
-        pctCobrado = (curStats.pCobrados / curStats.validOrders) * 100;
-        pctNo = 100 - pctCobrado;
-    }
-    
-    const pieHtml = `<div style="display:flex; align-items:center; gap:12px;">
-        <div style="width:36px; height:36px; border-radius:50%; background:conic-gradient(var(--success) ${pctCobrado}%, var(--danger) 0); flex-shrink:0;"></div>
-        <div style="display:flex; flex-direction:column; font-size:0.8rem; line-height:1.2;">
-            <span style="color:var(--success); font-weight:700;">${pctCobrado.toFixed(0)}% COBRADO</span>
-            <span style="color:var(--danger); font-weight:700;">${pctNo.toFixed(0)}% PENDIENTE</span>
-        </div>
-    </div>`;
-
     drawGrid('rowGrowth', [
         { label: 'Ventas del Mes (Brutas)', val: curStats.brutas, prev: prevStats.brutas, t: 'cur',
           info: { desc:'Facturación MTD ignorando anulados.', calc:`Hasta fecha ${dayLimit}:<br>Mes evaluado: ${fmt(curStats.brutas)}<br>Mes comparación: ${fmt(prevStats.brutas)}`} },
         { label: 'Pedidos Nuevos (Unid.)', val: curStats.validOrders, prev: prevStats.validOrders, t: 'num',
           info: { desc:'Unidades operadas válidas', calc:`Total MTD: ${fmt(curStats.validOrders,'num')} pedidos.`} },
-        { label: 'Ticket Promedio', val: tktPromo, prev: ptktPromo, t: 'cur',
-          info: { desc:'Facturación / Cantidad válida', calc:`Facturacion: ${fmt(curStats.brutas)} / Pedidos: ${fmt(curStats.validOrders,'num')}<hr/>Ticket = ${fmt(tktPromo)}`} },
-        { label: 'Volumen: Estados', val: pieHtml, prev: 0, t: 'raw', hideDelta:true,
-          info: { desc:'Relación porcentual de terminados vs no pagados.', calc:`Cobrados: ${fmt(curStats.pCobrados,'num')}<br>Deudas o Varios: ${fmt(curStats.pNoCobrados,'num')}`} },
+        { label: 'Ticket Promedio', val: tktPromedio, prev: prevTktPromedio, t: 'cur',
+          info: { desc:'Facturación / Cantidad válida', calc:`Facturacion: ${fmt(curStats.brutas)} / Pedidos: ${fmt(curStats.validOrders,'num')}<hr/>Ticket = ${fmt(tktPromedio)}`} },
         { label: 'Pedidos Anulados', val: curStats.anulados, prev: prevStats.anulados, t: 'num', inv: true,
           info: { desc:'Volumen de cancelaciones.', calc:`Mismos anulados a esta misma fecha limitados a MTD.`} }
-    ], 'repeat(5, 1fr)'); // overrides 4 columns to fit 5
+    ]);
 
     /* 4. GRAFICOS */
     const ttip = { backgroundColor:'#18181b', titleColor:'#fff', padding:10, cornerRadius:4, bodyFont:{family:'Inter'} };
-    Object.values(charts).forEach(c=>c.destroy());
+    Object.entries(charts).forEach(([k,c]) => { if(k !== 'pieCobro') c.destroy(); });
     
     // Reservamos data en window para re-dibujar
     // Generar todos los días del 1 hasta hoy (o fin de mes si es mes pasado)
