@@ -257,23 +257,28 @@
     <!-- PANORAMA PRINCIPAL -->
     <div class="dashboard-section" data-section="panorama">
         <div class="section-header"><span class="drag-handle" style="display:none; cursor:grab; margin-right:8px; color:var(--text-muted);">⠿</span>Panorama Principal</div>
-        
-        <!-- Status general grande -->
-        <div id="panoramaStatus" class="metric-card" style="padding:24px; margin-bottom:16px;"></div>
-        
-        <!-- 4 cards principales -->
         <div class="metrics-grid" id="rowPanorama"></div>
-        
-        <!-- Listado de cheques expandible -->
-        <div class="metric-card" style="padding:0; margin-bottom:16px; overflow:hidden;">
-            <div id="panoramaChequeHeader" onclick="document.getElementById('panoramaChequeList').style.display = document.getElementById('panoramaChequeList').style.display === 'none' ? 'block' : 'none'; this.querySelector('.chevron').style.transform = document.getElementById('panoramaChequeList').style.display === 'none' ? '' : 'rotate(180deg)';" style="padding:16px 20px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border);">
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <span style="font-weight:600; font-size:0.9rem;">Próximos Cheques a Pagar</span>
-                    <span id="panoramaChequeBadge" style="font-size:0.75rem; padding:2px 8px; border-radius:99px; background:var(--warning-bg); color:var(--warning); font-weight:600;"></span>
-                </div>
-                <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition:transform 0.2s;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    </div>
+
+    <!-- Modal: Cheques del Mes -->
+    <div class="modal-overlay" id="modalChequesMes" onclick="if(event.target===this)this.classList.remove('active')">
+        <div class="modal" style="max-width:600px; padding:24px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 style="font-size:1rem; font-weight:700;">Cheques de Este Mes</h3>
+                <span onclick="document.getElementById('modalChequesMes').classList.remove('active')" style="cursor:pointer; font-size:1.3rem; color:var(--text-muted);">&times;</span>
             </div>
-            <div id="panoramaChequeList" style="display:none; max-height:400px; overflow-y:auto;"></div>
+            <div id="modalChequesMesBody" style="max-height:60vh; overflow-y:auto;"></div>
+        </div>
+    </div>
+
+    <!-- Modal: Todos los Cheques Pendientes -->
+    <div class="modal-overlay" id="modalChequesAll" onclick="if(event.target===this)this.classList.remove('active')">
+        <div class="modal" style="max-width:600px; padding:24px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 style="font-size:1rem; font-weight:700;">Todos los Cheques Pendientes</h3>
+                <span onclick="document.getElementById('modalChequesAll').classList.remove('active')" style="cursor:pointer; font-size:1.3rem; color:var(--text-muted);">&times;</span>
+            </div>
+            <div id="modalChequesAllBody" style="max-height:60vh; overflow-y:auto;"></div>
         </div>
     </div>
 
@@ -597,90 +602,66 @@ function coreLogic(d1, d2, m1) {
     document.getElementById('globalStatusPill').innerHTML = `<span style="background:${stCol};width:8px;height:8px;border-radius:50%;"></span> <span style="color:${stCol};">${stText}</span>`;
 
     // ── PANORAMA PRINCIPAL ──
-    // Cheques pendientes del mes
     const chequesPendMesArr = (d1.chequesActivos || []).filter(c => {
         if (!c.vencimiento) return false;
         return c.vencimiento.substring(0, 7) === viewingMonth && c.estado !== 'PAGADO' && c.estado !== 'ANULADO';
     });
     const totalChequesMes = chequesPendMesArr.reduce((a, c) => a + c.monto, 0);
     
-    // Todos los cheques pendientes
     const todosChequesPendArr = (d1.chequesActivos || []).filter(c => c.estado !== 'PAGADO' && c.estado !== 'ANULADO');
     const totalChequesTodo = todosChequesPendArr.reduce((a, c) => a + c.monto, 0);
     
-    // Diferencia: qué pasa si pago este mes con la caja actual
-    const restaDespuesMes = cajaActual - totalChequesMes;
-    const restaDespuesTotal = cajaAcumulada - totalChequesTodo;
+    // Después de pagar ESTE MES
+    const cajaPostMes = cajaAcumulada - totalChequesMes;
+    const deudaRestante = totalChequesTodo - totalChequesMes;
     
-    // Status bar grande
-    const statusOk = cajaAcumulada >= totalChequesTodo;
-    const statusMesOk = cajaActual >= totalChequesMes;
-    const statusColor = statusOk ? '#637c6c' : restaDespuesTotal > -cajaAcumulada * 0.5 ? '#d4a373' : '#b56b6b';
-    const statusMsg = statusOk 
-        ? `Tu caja total cubre toda la deuda. Sobrante: ${fmt(restaDespuesTotal)}`
-        : `Falta ${fmt(Math.abs(restaDespuesTotal))} para cubrir toda la deuda`;
-    const statusMesMsg = statusMesOk 
-        ? `Este mes cubierto. Después de pagar queda: ${fmt(restaDespuesMes)}`
-        : `Este mes falta ${fmt(Math.abs(restaDespuesMes))} — necesitás cubrir antes del cierre`;
+    const chequesMesHtml = `<div style="display:flex; flex-direction:column; gap:4px;">
+        <div style="font-weight:700; font-size:1.5rem;">${fmt(totalChequesMes)}</div>
+        <div style="font-size:0.78rem; color:var(--text-muted);">${chequesPendMesArr.length} cheque${chequesPendMesArr.length !== 1 ? 's' : ''}</div>
+        <button onclick="openChequesMesModal()" style="margin-top:4px; padding:4px 10px; border-radius:4px; border:1px solid var(--border); background:var(--bg-body); color:var(--text-main); font-size:0.72rem; font-weight:500; cursor:pointer; width:fit-content;">Ver cheques</button>
+    </div>`;
     
-    document.getElementById('panoramaStatus').innerHTML = `
-        <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
-            <div style="width:12px; height:12px; border-radius:50%; background:${statusColor}; flex-shrink:0;"></div>
-            <div style="font-weight:700; font-size:1.1rem; color:${statusColor};">${statusOk ? 'DEUDA CUBIERTA' : 'ATENCIÓN: DEUDA SIN CUBRIR'}</div>
-        </div>
-        <div style="font-size:0.85rem; color:var(--text-sec); margin-bottom:4px;">${statusMesMsg}</div>
-        <div style="font-size:0.85rem; color:var(--text-sec);">${statusMsg}</div>
-    `;
+    const postMesColor = cajaPostMes >= 0 ? '#637c6c' : '#b56b6b';
+    const postMesHtml = `<div style="display:flex; flex-direction:column; gap:4px;">
+        <div style="font-weight:700; font-size:1.5rem; color:${postMesColor};">${fmt(cajaPostMes)}</div>
+        <div style="font-size:0.78rem; color:var(--text-muted);">Deuda restante: ${fmt(deudaRestante)}</div>
+        <button onclick="openChequesAllModal()" style="margin-top:4px; padding:4px 10px; border-radius:4px; border:1px solid var(--border); background:var(--bg-body); color:var(--text-main); font-size:0.72rem; font-weight:500; cursor:pointer; width:fit-content;">Ver pr\u00f3ximos cheques</button>
+    </div>`;
     
-    // 4 cards
     drawGrid('rowPanorama', [
         { label: 'Caja Total (Ahorro)', val: cajaAcumulada, prev: 0, t: 'cur', hideDelta:true,
           info: { desc:'Todo el dinero disponible acumulado.', calc:`Banco: ${fmt(m.bancoCuenta||0)}<br>MP: ${fmt(m.saldoMP||0)}<br>Efectivo: ${fmt(m.efectivoCaja||0)}<br>Inversiones: ${fmt(m.inversiones||0)}<hr/>Actual: ${fmt(cajaActual)}<br>+ Anterior: ${fmt(prevCajaActual)}<br>= Total: ${fmt(cajaAcumulada)}`} },
-        { label: 'Cheques Este Mes', val: totalChequesMes, prev: 0, t: 'cur', hideDelta:true,
-          info: { desc:'Cheques que vencen este mes y aún no fueron pagados.', calc:`${chequesPendMesArr.length} cheques pendientes<br>Total: ${fmt(totalChequesMes)}`} },
+        { label: 'Cheques Este Mes', val: chequesMesHtml, prev: 0, t: 'raw', hideDelta:true,
+          info: { desc:'Cheques que vencen este mes.', calc:`${chequesPendMesArr.length} cheques<br>Total: ${fmt(totalChequesMes)}`} },
         { label: 'Deuda Total Cheques', val: totalChequesTodo, prev: 0, t: 'cur', hideDelta:true,
-          info: { desc:'Suma de todos los cheques pendientes de cualquier mes.', calc:`${todosChequesPendArr.length} cheques pendientes<br>Total: ${fmt(totalChequesTodo)}`} },
-        { label: 'Después de Pagar Todo', val: restaDespuesTotal, prev: 0, t: 'cur', hideDelta:true,
-          info: { desc:'Lo que queda si pagás toda la deuda con tu caja total.', calc:`Caja Total: ${fmt(cajaAcumulada)}<br>- Deuda Total: ${fmt(totalChequesTodo)}<hr/>Resultado: ${fmt(restaDespuesTotal)}${restaDespuesTotal < 0 ? '<br><span style="color:var(--danger)">⚠ No alcanza</span>' : '<br><span style="color:var(--success)">✓ Cubierto</span>'}`} }
+          info: { desc:'Todos los cheques pendientes.', calc:`${todosChequesPendArr.length} cheques<br>Total: ${fmt(totalChequesTodo)}`} },
+        { label: 'Despu\u00e9s de Pagar Este Mes', val: postMesHtml, prev: 0, t: 'raw', hideDelta:true,
+          info: { desc:'Caja total menos cheques de este mes.', calc:`Caja Total: ${fmt(cajaAcumulada)}<br>- Cheques mes: ${fmt(totalChequesMes)}<hr/>Queda: ${fmt(cajaPostMes)}<br>Deuda futura: ${fmt(deudaRestante)}`} }
     ]);
     
-    // Listado de cheques expandible (ordenados por vencimiento)
-    const chequesListado = todosChequesPendArr
-        .filter(c => c.vencimiento)
-        .sort((a, b) => new Date(a.vencimiento) - new Date(b.vencimiento));
-    
-    document.getElementById('panoramaChequeBadge').textContent = chequesListado.length + ' pendientes';
-    
-    const chequesHtml = chequesListado.map(c => {
-        const vDate = new Date(c.vencimiento + 'T12:00:00');
-        const diffD = Math.round((vDate - today) / (1000*60*60*24));
-        const urgencia = diffD < 0 ? 'var(--danger)' : diffD <= 7 ? '#b56b6b' : diffD <= 30 ? '#d4a373' : 'var(--text-sec)';
-        const diasTxt = diffD < 0 ? `Vencido hace ${Math.abs(diffD)}d` : diffD === 0 ? 'Hoy' : diffD === 1 ? 'Mañana' : `En ${diffD} días`;
-        
-        return `<div style="padding:12px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-            <div style="min-width:0;">
-                <div style="font-weight:600; font-size:0.9rem;">${c.proveedor || 'Sin proveedor'}</div>
-                <div style="font-size:0.75rem; color:var(--text-muted);">Nº ${c.numero} · Vence ${formatDDMMAA(c.vencimiento)}</div>
-            </div>
-            <div style="display:flex; align-items:center; gap:12px;">
-                <div style="text-align:right;">
-                    <div style="font-weight:700;">${fmt(c.monto)}</div>
-                    <div style="font-size:0.72rem; color:${urgencia}; font-weight:600;">${diasTxt}</div>
-                </div>
-                <button onclick="marcarChequePagado('${c.numero}')" style="padding:6px 12px; border-radius:4px; border:1px solid var(--success); background:var(--success-bg); color:var(--success); font-size:0.75rem; font-weight:600; cursor:pointer; white-space:nowrap;">✓ Pagado</button>
-            </div>
-        </div>`;
-    }).join('');
-    
-    document.getElementById('panoramaChequeList').innerHTML = chequesHtml || '<div style="padding:20px; text-align:center; color:var(--text-muted);">Sin cheques pendientes</div>';
+    // Build modal content
+    function buildChequeRows(list) {
+        return list.filter(c => c.vencimiento).sort((a, b) => new Date(a.vencimiento) - new Date(b.vencimiento)).map(c => {
+            const vDate = new Date(c.vencimiento + 'T12:00:00');
+            const diffD = Math.round((vDate - today) / (1000*60*60*24));
+            const urg = diffD < 0 ? 'var(--danger)' : diffD <= 7 ? '#b56b6b' : diffD <= 30 ? '#d4a373' : 'var(--text-sec)';
+            const dTxt = diffD < 0 ? 'Vencido hace '+Math.abs(diffD)+'d' : diffD === 0 ? 'Hoy' : diffD === 1 ? 'Ma\u00f1ana' : 'En '+diffD+' d\u00edas';
+            return `<div style="padding:12px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                <div><div style="font-weight:600; font-size:0.88rem;">${c.proveedor || 'Sin proveedor'}</div><div style="font-size:0.73rem; color:var(--text-muted);">N\u00ba ${c.numero} \u00b7 ${formatDDMMAA(c.vencimiento)}</div></div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="text-align:right;"><div style="font-weight:700;">${fmt(c.monto)}</div><div style="font-size:0.7rem; color:${urg}; font-weight:600;">${dTxt}</div></div>
+                    <button onclick="marcarChequePagado('${c.numero}')" style="padding:5px 10px; border-radius:4px; border:1px solid var(--success); background:var(--success-bg); color:var(--success); font-size:0.73rem; font-weight:600; cursor:pointer;">\u2713 Pagado</button>
+                </div></div>`;
+        }).join('') || '<div style="padding:20px; text-align:center; color:var(--text-muted);">Sin cheques</div>';
+    }
+    window._chequesMesHtml = buildChequeRows(chequesPendMesArr);
+    window._chequesAllHtml = buildChequeRows(todosChequesPendArr);
 
     // Global Ventas
     const glob = d1.globalStats || { totalBruto:0, totalCobrado:0, deudaMoto:0, deudaContraReembolso:0 };
-    // ── 2.1 Tasa de conversión a cobro ──
     const tasaCobro = curStats.brutas > 0 ? (curStats.pCobradosVal / curStats.brutas * 100) : 0;
     const prevTasaCobro = prevStats.brutas > 0 ? ((prevStats.pCobradosVal||0) / prevStats.brutas * 100) : 0;
     
-    // Anulados
     const prevAnuladosVal = prevStats.anuladosVal || 0;
     const deltaAnulados = prevAnuladosVal > 0 ? ((curStats.anuladosVal - prevAnuladosVal) / prevAnuladosVal * 100) : 0;
     const anuladosHtml = `<div style="display:flex; flex-direction:column; gap:4px;">
@@ -1759,6 +1740,16 @@ async function markChequeAsPaid(numero) {
 }
 
 function marcarChequePagado(numero) { markChequeAsPaid(numero); }
+
+function openChequesMesModal() {
+    document.getElementById('modalChequesMesBody').innerHTML = window._chequesMesHtml || '';
+    document.getElementById('modalChequesMes').classList.add('active');
+}
+
+function openChequesAllModal() {
+    document.getElementById('modalChequesAllBody').innerHTML = window._chequesAllHtml || '';
+    document.getElementById('modalChequesAll').classList.add('active');
+}
 
 // renderDashboard() is called after auth — not here
 setInterval(() => { if(window._authToken) renderDashboard(); }, 60*60*1000);
